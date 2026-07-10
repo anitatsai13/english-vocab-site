@@ -209,6 +209,7 @@
     <div class="know">
       <button class="btn ghost sm" id="shuffle">🔀 打亂順序</button>
       <button class="btn primary sm" id="markknown">✅ 我學會了</button>
+      <button class="btn ghost sm" id="pinbtn">📌 標記不熟</button>
     </div>
     <div class="stat" id="learnstat"></div>
   </section>
@@ -1704,7 +1705,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
 /* ---------- LEARN ---------- */
 let learnScope="all", deck=[], idx=0;
 const known=new Set(LS.get("known_words",[]));
-function buildDeck(){deck=VOCAB.filter(v=>v.group===activeGroup&&(learnScope==="all"||v.lesson===learnScope));idx=0;renderCard();}
+function buildDeck(){deck=VOCAB.filter(v=> learnScope==="pin" ? isPinned(v.en) : (v.group===activeGroup&&(learnScope==="all"||v.lesson===learnScope)));idx=0; if(!deck.length){$("#counter").textContent="0 / 0";$("#femoji").textContent="📌";$("#fen").textContent=(learnScope==="pin"?"尚無釘選":"(無)");$("#fpos").textContent="";$("#fzh").textContent="";$("#fdetail").innerHTML="";$("#learnstat").textContent="";return;} renderCard();}
 function detailHTML(v){
   let h="";
   if(v.def)h+=`<div class="blk ex"><span class="lbl">📖 English Definition <button class="miniSpeak" onclick="speak('${esc(v.def).replace(/'/g,"\\'")}')">🔊</button></span><div class="exen" style="font-weight:600">${esc(v.def)}</div></div>`;
@@ -1727,7 +1728,8 @@ function renderCard(){
   const mk=$("#markknown");
   if(known.has(v.en)){mk.textContent="✅ 已學會";mk.classList.remove("primary");mk.classList.add("ghost");}
   else{mk.textContent="✅ 我學會了";mk.classList.add("primary");mk.classList.remove("ghost");}
-  $("#learnstat").textContent="已標記學會："+known.size+" 個單字";
+  const pb=$("#pinbtn"); if(pb){ if(isPinned(v.en)){pb.textContent="📌 已釘選";pb.style.background="var(--l5)";pb.style.color="#fff";pb.style.borderColor="var(--l5)";} else {pb.textContent="📌 標記不熟";pb.style.background="";pb.style.color="";pb.style.borderColor="";} }
+  $("#learnstat").textContent="已標記學會："+known.size+" 個單字　|　📌 不熟 "+pinCount()+" 個";
 }
 $("#flash").onclick=e=>{if(e.target.closest('.miniSpeak')||e.target.id==="fspeak")return;$("#flash").classList.toggle("flip");};
 $("#fspeak").onclick=e=>{e.stopPropagation();speak(deck[idx].en);};
@@ -1735,16 +1737,18 @@ $("#next").onclick=()=>{idx=(idx+1)%deck.length;renderCard();speak(deck[idx].en)
 $("#prev").onclick=()=>{idx=(idx-1+deck.length)%deck.length;renderCard();};
 $("#shuffle").onclick=()=>{deck=shuffle(deck);idx=0;renderCard();};
 $("#markknown").onclick=()=>{const v=deck[idx];if(known.has(v.en))known.delete(v.en);else known.add(v.en);LS.set("known_words",[...known]);renderCard();};
-function chipRow(box,current,onPick){
+$("#pinbtn").onclick=()=>{const v=deck[idx];if(!v)return;togglePin(v.en);renderCard();renderLearnChips();};
+function chipRow(box,current,onPick,withPin){
   const units=GROUPS[activeGroup].units;box.innerHTML="";
   const mk=(u,label)=>{const b=document.createElement("button");b.className="chip"+(current===u?" active":"");b.textContent=label;
     if(current===u&&u!=="all"){b.style.borderColor=ucolor(u);b.style.color=ucolor(u);}
     b.onclick=()=>onPick(u);box.appendChild(b);};
   mk("all","全部");units.forEach(u=>mk(u,u));
+  if(withPin)mk("pin","📌 不熟("+pinCount()+")");
 }
-function renderLearnChips(){chipRow($("#learnChips"),learnScope,u=>{learnScope=u;renderLearnChips();buildDeck();});}
-function renderListChips(){chipRow($("#listChips"),listScope,u=>{listScope=u;renderListChips();renderList();});}
-function renderQuizChips(){chipRow($("#quizChips"),qScope,u=>{qScope=u;renderQuizChips();showBest();});}
+function renderLearnChips(){chipRow($("#learnChips"),learnScope,u=>{learnScope=u;renderLearnChips();buildDeck();},true);}
+function renderListChips(){chipRow($("#listChips"),listScope,u=>{listScope=u;renderListChips();renderList();},true);}
+function renderQuizChips(){chipRow($("#quizChips"),qScope,u=>{qScope=u;renderQuizChips();showBest();},true);}
 function renderExamChips(){chipRow($("#examChips"),eScope,u=>{eScope=u;renderExamChips();renderExam();});}
 function renderGroupSel(){
   const c=$("#groupSel");c.innerHTML="";
@@ -1760,7 +1764,7 @@ function renderGroupSel(){
 /* ---------- LIST ---------- */
 let listScope="all";
 function renderList(){
-  const arr=VOCAB.filter(v=>v.group===activeGroup&&(listScope==="all"||v.lesson===listScope));
+  const arr=VOCAB.filter(v=> listScope==="pin" ? isPinned(v.en) : (v.group===activeGroup&&(listScope==="all"||v.lesson===listScope)));
   $("#listview").innerHTML=arr.map(v=>`
     <div class="item">
       <div class="top">
@@ -1769,6 +1773,7 @@ function renderList(){
         <div><div class="w">${esc(v.en)} <span style="color:var(--muted);font-size:.8rem;font-weight:400">${esc(v.pos)}</span></div>
         <div class="m">${esc(v.zh)}</div></div>
         <button class="sp" onclick="event.stopPropagation();speak('${esc(v.en).replace(/'/g,"\\'")}')">🔊</button>
+        <button class="sp" title="標記/取消不熟" style="${isPinned(v.en)?'background:var(--l5);color:#fff':''}" onclick="event.stopPropagation();togglePin('${esc(v.en).replace(/'/g,"\\'")}');renderList();renderListChips();">📌</button>
       </div>
       <span class="toggle">▼ 訣竅 / 例句</span>
       <div class="more">
@@ -1817,8 +1822,9 @@ function makeQuestion(word,pool,type){
   return{type,word,opts:shuffle([word,...distract]),key};
 }
 $("#startquiz").onclick=()=>{
-  let scope=VOCAB.filter(v=>v.group===activeGroup&&(qScope==="all"||v.lesson===qScope));
+  let scope=VOCAB.filter(v=> qScope==="pin" ? isPinned(v.en) : (v.group===activeGroup&&(qScope==="all"||v.lesson===qScope)));
   let qpool=(qType==="cloze")?scope.filter(v=>clozeBlank(v)):scope;
+  if(!qpool.length){alert("目前沒有可測的單字(此範圍或釘選為空)");return;}
   let n=$("#qnum").value;n=(n==="all")?qpool.length:Math.min(+n,qpool.length);
   const picked=sample(qpool,n);
   questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,scope,t);});
@@ -2091,7 +2097,7 @@ function loadM(){try{return JSON.parse(localStorage.getItem(MKEY)||'[]')}catch(e
 function saveM(a){try{localStorage.setItem(MKEY,JSON.stringify(a))}catch(e){}}
 function mkKey(r){return (r.round||'')+'|'+(r.t||'')+'|'+(r.en||'')+'|'+(r.mode||'')}
 function mergeArr(a,b){const m=new Map();[...(a||[]),...(b||[])].forEach(r=>m.set(mkKey(r),r));return [...m.values()];}
-async function syncDown(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoad();const merged=mergeArr(loadM(),cloud);saveM(merged);await cloudSave(merged);}catch(e){console.warn('sync',e)}}
+async function syncDown(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoad();const merged=mergeArr(loadM(),cloud);saveM(merged);await cloudSave(merged);try{await syncDownPins();}catch(ep){}}catch(e){console.warn('sync',e)}}
 function cloudMirror(){if(CLOUD&&loggedIn())cloudSave(loadM()).catch(()=>{})}
 function newRound(){quizRound=new Date().toISOString();}
 function logMistake(rec){rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadM();a.push(rec);saveM(a);cloudMirror();}
@@ -2125,6 +2131,20 @@ function renderWrong(){
   host.innerHTML=h;
 }
 loadSession(); renderWrong(); if(CLOUD&&loggedIn())syncDown().then(renderWrong).catch(function(){});
+
+/* ===== pins ===== */
+/* ===== 不熟單字釘選 module ===== */
+const PKEY='en_pins_v1';
+function loadPins(){try{return new Set(JSON.parse(localStorage.getItem(PKEY)||'[]'))}catch(e){return new Set()}}
+let PINS=loadPins();
+function savePins(){try{localStorage.setItem(PKEY,JSON.stringify([...PINS]))}catch(e){} cloudMirrorPins();}
+function isPinned(en){return PINS.has(en);}
+function togglePin(en){if(PINS.has(en))PINS.delete(en);else PINS.add(en);savePins();}
+function pinCount(){return PINS.size;}
+async function cloudLoadPins(){if(!await authOK())return null;const j=await sb('/rest/v1/mistakes?select=data&user_id=eq.'+SESSION.user.id+'&app=eq.english_pin');return (j&&j[0]&&j[0].data)||[];}
+async function cloudSavePins(arr){if(!await authOK())return;await sb('/rest/v1/mistakes?on_conflict=user_id,app',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:SESSION.user.id,app:'english_pin',data:arr,updated_at:new Date().toISOString()})});}
+function cloudMirrorPins(){if(CLOUD&&loggedIn())cloudSavePins([...PINS]).catch(()=>{})}
+async function syncDownPins(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoadPins();(cloud||[]).forEach(function(e){PINS.add(e);});localStorage.setItem(PKEY,JSON.stringify([...PINS]));await cloudSavePins([...PINS]);}catch(e){}}
 
 /* init */
 renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
