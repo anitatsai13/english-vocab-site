@@ -223,7 +223,7 @@
   <!-- QUIZ -->
   <section class="panel" id="quiz">
     <div class="qcfg" id="qcfg">
-      <h3>測驗範圍</h3>
+      <h3>測驗範圍(可選多課)</h3>
       <div class="row" id="quizChips"></div>
       <h3>題型</h3>
       <div class="row">
@@ -1748,14 +1748,22 @@ function chipRow(box,current,onPick,withPin){
 }
 function renderLearnChips(){chipRow($("#learnChips"),learnScope,u=>{learnScope=u;renderLearnChips();buildDeck();},true);}
 function renderListChips(){chipRow($("#listChips"),listScope,u=>{listScope=u;renderListChips();renderList();},true);}
-function renderQuizChips(){chipRow($("#quizChips"),qScope,u=>{qScope=u;renderQuizChips();showBest();},true);}
+function renderQuizChips(){
+  const box=$("#quizChips"); box.innerHTML="";
+  const units=GROUPS[activeGroup].units;
+  function onQ(u){ if(u==="all"){qSel.clear();qPin=false;} else if(u==="pin"){qPin=true;qSel.clear();} else {qPin=false; if(qSel.has(u))qSel.delete(u); else qSel.add(u);} renderQuizChips(); showBest(); }
+  const mk=(u,label,active,color)=>{const b=document.createElement("button");b.className="chip"+(active?" active":"");b.textContent=label; if(active&&color){b.style.borderColor=color;b.style.color=color;} b.onclick=()=>onQ(u); box.appendChild(b);};
+  mk("all","全部", qSel.size===0&&!qPin, null);
+  units.forEach(u=>mk(u,u, !qPin&&qSel.has(u), ucolor(u)));
+  mk("pin","📌 不熟("+pinCount()+")", qPin, "var(--l5)");
+}
 function renderExamChips(){chipRow($("#examChips"),eScope,u=>{eScope=u;renderExamChips();renderExam();});}
 function renderGroupSel(){
   const c=$("#groupSel");c.innerHTML="";
   Object.keys(GROUPS).forEach(k=>{const b=document.createElement("button");b.className="chip"+(activeGroup===k?" active":"");
     b.style.fontWeight="800";b.textContent=GROUPS[k].name;
     if(activeGroup===k){b.style.borderColor="var(--brand)";b.style.color="var(--brand)";b.style.background="#eef3ff";}
-    b.onclick=()=>{if(activeGroup===k)return;activeGroup=k;learnScope=listScope=qScope=eScope="all";
+    b.onclick=()=>{if(activeGroup===k)return;activeGroup=k;learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;
       renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
       updateTotal();buildDeck();renderList();showBest();renderExam();};
     c.appendChild(b);});
@@ -1791,7 +1799,7 @@ function renderList(){
 /* list chips rendered by renderListChips() */
 
 /* ---------- QUIZ ---------- */
-let qScope="all", qType="mix";
+let qScope="all", qType="mix", qSel=new Set(), qPin=false;
 /* quiz scope chips rendered by renderQuizChips() */
 $$("[data-qtype]").forEach(c=>c.onclick=()=>{$$("[data-qtype]").forEach(x=>x.classList.remove("active"));c.classList.add("active");qType=c.dataset.qtype;});
 
@@ -1822,7 +1830,7 @@ function makeQuestion(word,pool,type){
   return{type,word,opts:shuffle([word,...distract]),key};
 }
 $("#startquiz").onclick=()=>{
-  let scope=VOCAB.filter(v=> qScope==="pin" ? isPinned(v.en) : (v.group===activeGroup&&(qScope==="all"||v.lesson===qScope)));
+  let scope = qPin ? VOCAB.filter(v=>isPinned(v.en)) : qSel.size ? VOCAB.filter(v=>v.group===activeGroup && qSel.has(v.lesson)) : VOCAB.filter(v=>v.group===activeGroup);
   let qpool=(qType==="cloze")?scope.filter(v=>clozeBlank(v)):scope;
   if(!qpool.length){alert("目前沒有可測的單字(此範圍或釘選為空)");return;}
   let n=$("#qnum").value;n=(n==="all")?qpool.length:Math.min(+n,qpool.length);
@@ -1895,7 +1903,7 @@ $("#quitquiz").onclick=()=>{$("#qrun").style.display="none";$("#qcfg").style.dis
 function finish(){
   $("#pbar").style.width="100%";
   const pct=Math.round(score/questions.length*100);
-  const key="best_"+activeGroup+"_"+qScope;const best=Math.max(LS.get(key,0),pct);LS.set(key,best);
+  const key="best_"+activeGroup+"_"+qScopeKey();const best=Math.max(LS.get(key,0),pct);LS.set(key,best);
   let emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
   let msg=pct>=90?"太厲害了！":pct>=70?"做得很好！":pct>=50?"繼續加油！":"多練習幾次會更好！";
   $("#qrun").style.display="none";
@@ -1915,7 +1923,8 @@ function finish(){
   $("#retryall").onclick=()=>{$("#qresult").style.display="none";$("#startquiz").click();};
   $("#backcfg").onclick=()=>{$("#qresult").style.display="none";$("#qcfg").style.display="block";showBest();};
 }
-function showBest(){const b=LS.get("best_"+activeGroup+"_"+qScope,0);$("#beststat").textContent=b?("此範圍最佳答對率： "+b+"%"):"還沒有紀錄，開始第一次測驗吧！";}
+function qScopeKey(){return qPin?"pin":(qSel.size?[...qSel].sort().join("+"):"all");}
+function showBest(){const b=LS.get("best_"+activeGroup+"_"+qScopeKey(),0);$("#beststat").textContent=b?("此範圍最佳答對率： "+b+"%"):"還沒有紀錄，開始第一次測驗吧！";}
 
 /* ---------- EXAM ---------- */
 let eScope="all";
