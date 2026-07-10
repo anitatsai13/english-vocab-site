@@ -1973,10 +1973,13 @@ function vRangeArr(){
   return d.filter(r=>r[0]>=a && r[0]<=b);
 }
 function vsp(w){return "speak('"+String(w).replace(/'/g,"\\'")+"')";}
+function speak3(){var a=[].slice.call(arguments).filter(Boolean);try{speechSynthesis.cancel();a.forEach(function(w){var u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u);});}catch(e){}}
+function vsp3(r){return "speak3("+[r[1],r[4],r[5]].filter(Boolean).map(function(w){return "'"+String(w).replace(/'/g,"\\'")+"'";}).join(",")+")";}
+function vsp3btn(r){return '<button class="sp" title="依序唸 原形→過去式→過去分詞" onclick="'+vsp3(r)+'">🔊³</button>';}
 function vBrowse(){
   const arr=vRangeArr();
   let h='<div class="stat">共 '+arr.length+' 個 · 原形／過去式／過去分詞</div><div style="overflow:auto;max-height:70vh"><table class="vtbl"><tr><th>No.</th><th>原形</th><th>過去式</th><th>過去分詞</th><th>中文</th><th>🔊</th></tr>';
-  h+=arr.map(r=>'<tr><td>'+r[0]+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[4]||"—")+'</td><td>'+esc(r[5]||"—")+'</td><td class="vzh">'+esc(r[6])+'</td><td><button class="sp" onclick="'+vsp(r[1])+'">🔊</button></td></tr>').join('');
+  h+=arr.map(r=>'<tr><td>'+r[0]+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[4]||"—")+'</td><td>'+esc(r[5]||"—")+'</td><td class="vzh">'+esc(r[6])+'</td><td><button class="sp" onclick="'+vsp(r[1])+'">🔊</button> '+vsp3btn(r)+'</td></tr>').join('');
   h+='</table></div>';
   $("#vout").innerHTML=h;
 }
@@ -2045,7 +2048,7 @@ function vGrade3(){
   var r=vq[vi].r; if($("#vsubmit").disabled)return;
   var ok=(!r[4]||vnorm($("#vpast").value)===vnorm(r[4])) && (!r[5]||vnorm($("#vpp").value)===vnorm(r[5]));
   var f=$("#vfb"); f.className="feedback "+(ok?"ok":"bad");
-  f.innerHTML=(ok?"✅ 答對!":"❌ 正解:")+"　過去式 <b>"+esc(r[4]||"—")+"</b>　過去分詞 <b>"+esc(r[5]||"—")+"</b>";
+  f.innerHTML=(ok?"✅ 答對!":"❌ 正解:")+"　過去式 <b>"+esc(r[4]||"—")+"</b>　過去分詞 <b>"+esc(r[5]||"—")+"</b> "+vsp3btn(r);
   $("#vsubmit").disabled=true; $("#vpast").disabled=true; $("#vpp").disabled=true;
   vAfter(ok,r);
 }
@@ -2054,7 +2057,7 @@ function vGradeMC(btn,o,q){
   $("#vopts").querySelectorAll(".opt").forEach(function(b){ b.onclick=null; b.classList.add("dim"); var isAns=(q.byBase? b.textContent===r[1] : b.textContent===r[6]); if(isAns){b.classList.add("correct");b.classList.remove("dim");} });
   if(!ok)btn.classList.add("wrong");
   var f=$("#vfb"); f.className="feedback "+(ok?"ok":"bad");
-  f.innerHTML=(ok?"✅ 答對!":"❌ 正解: ")+"<b>"+esc(r[1])+"</b>　過去式 "+esc(r[4]||"—")+"／過去分詞 "+esc(r[5]||"—")+"　"+esc(r[6]);
+  f.innerHTML=(ok?"✅ 答對!":"❌ 正解: ")+"<b>"+esc(r[1])+"</b>　過去式 "+esc(r[4]||"—")+"／過去分詞 "+esc(r[5]||"—")+"　"+esc(r[6])+" "+vsp3btn(r);
   vAfter(ok,r);
 }
 function vFinish(){
