@@ -150,6 +150,15 @@
   .vtbl th{background:#eef3ff;color:var(--muted);position:sticky;top:0}
   .vtbl .vzh{color:var(--muted);font-size:.85rem}
   .vnum input{padding:8px 10px;border-radius:10px;border:2px solid var(--line);font-size:1.05rem;font-weight:800;width:80px;text-align:center}
+  .acct{background:#f4f7ff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;font-size:.92rem}
+  .acct-form{flex-direction:column;align-items:stretch}
+  .acct-form .atitle{font-weight:700;color:var(--muted);margin-bottom:4px}
+  .acct-form input{padding:10px;border:2px solid var(--line);border-radius:10px;font-size:1rem}
+  .abtns{display:flex;gap:8px;flex-wrap:wrap}
+  .acct .btn,.abtns .btn{border:none;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;background:#e7eefb;color:var(--muted)}
+  .acct .btn.brand,.abtns .btn.brand{background:var(--brand);color:#fff}
+  .abtns .btn.ghost{background:#e7eefb}
+  .amsg{font-size:.85rem;margin-top:4px} .amsg.bad{color:var(--bad)} .amsg.ok{color:var(--ok)}
 </style>
 </head>
 <body>
@@ -166,6 +175,7 @@
     <button class="tab" data-tab="quiz">📝 測驗</button>
     <button class="tab" data-tab="exam">📜 考古題</button>
     <button class="tab" data-tab="verb">🔤 動詞三態</button>
+    <button class="tab" data-tab="wrong">📕 錯題本</button>
   </div>
 
   <!-- LEARN -->
@@ -293,6 +303,7 @@
     </div>
     <div id="vout" style="margin-top:12px"></div>
   </section>
+  <section class="panel" id="wrong"></section>
 </div>
 
 <footer>資料來源：康軒國中英語 2 下 文法即時通 L5 / L6 單字（教用）・ 本網頁可離線使用</footer>
@@ -1687,6 +1698,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   if(t.dataset.tab==="list")renderList();
   if(t.dataset.tab==="quiz")showBest();
   if(t.dataset.tab==="exam")renderExam();
+  if(t.dataset.tab==="wrong")renderWrong();
 });
 
 /* ---------- LEARN ---------- */
@@ -1811,6 +1823,7 @@ $("#startquiz").onclick=()=>{
   const picked=sample(qpool,n);
   questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,scope,t);});
   qi=0;score=0;wrong=[];
+  newRound();
   $("#qcfg").style.display="none";$("#qresult").style.display="none";$("#qrun").style.display="block";
   renderQuestion();
 };
@@ -1864,6 +1877,7 @@ function submitSpell(){
 }
 function fb(ok,q){
   speak(q.word.en);
+  if(!ok)logMistake({mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh});
   const f=$("#qfeedback");f.className="feedback "+(ok?"ok":"bad");
   f.textContent=ok?"✅ 答對了！ "+q.word.en+" = "+q.word.zh : "❌ 正確答案： "+q.word.en+" = "+q.word.zh;
   if(q.word.ex)$("#qfbex").textContent="📝 "+q.word.ex.en;
@@ -1974,6 +1988,7 @@ function vStart(){
   if(vtype==="type3") arr=arr.filter(function(r){return r[4]||r[5];});
   else if(vtype==="past2base") arr=arr.filter(function(r){return r[4];});
   if(!arr.length){$("#vout").innerHTML='<p class="stat">此範圍沒有可測的動詞,請調整號碼或題型。</p>';return;}
+  newRound();
   vq=shuffle(arr).map(function(r){return vBuild(r,vPickType(r));});
   vi=0; vscore=0; vwrong=[]; vRender();
 }
@@ -2010,7 +2025,7 @@ function vRender(){
   $("#vnext").onclick=function(){vi++; if(vi<vq.length)vRender(); else vFinish();};
 }
 function vnorm(s){return (s||"").trim().toLowerCase().replace(/\s+/g," ");}
-function vAfter(ok,r){ speak(r[1]); if(ok)vscore++; else vwrong.push(r); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
+function vAfter(ok,r){ speak(r[1]); if(ok)vscore++; else vwrong.push(r); if(!ok)logMistake({mode:"verb",en:r[1],zh:r[6],correct:r[1]+" / "+(r[4]||"—")+" / "+(r[5]||"—")}); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
 function vGrade3(){
   var r=vq[vi].r; if($("#vsubmit").disabled)return;
   var ok=(!r[4]||vnorm($("#vpast").value)===vnorm(r[4])) && (!r[5]||vnorm($("#vpp").value)===vnorm(r[5]));
@@ -2045,6 +2060,71 @@ try{
   document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){ if(_gs) _gs.style.display = (t.dataset.tab==='verb'?'none':''); });});
 }catch(e){}
 vClampInputs(); vBrowse();
+
+/* ===== account+wrong ===== */
+/* ===== 會員帳號 + 錯題本 module ===== */
+const SUPABASE_URL="https://cpjkraxbvdhnvjggophz.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwamtyYXhidmRobnZqZ2dvcGh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxMjkzMjcsImV4cCI6MjA5NzcwNTMyN30.M2NXDpSLT29uIChIDtAVbpL8o5oGJK3BpGgr9L8Vp1s";
+const CLOUD=!!(SUPABASE_URL&&SUPABASE_ANON&&SUPABASE_URL.indexOf('http')===0);
+const APPID='english';
+const SKEY='en_session_v1';let SESSION=null;
+const MKEY='en_mistakes_v1';let quizRound=null;
+function loadSession(){try{SESSION=JSON.parse(localStorage.getItem(SKEY)||'null')}catch(e){SESSION=null}}
+function saveSession(s){SESSION=s;try{s?localStorage.setItem(SKEY,JSON.stringify(s)):localStorage.removeItem(SKEY)}catch(e){}}
+function loggedIn(){return !!(SESSION&&SESSION.user)}
+function userEmail(){return loggedIn()?SESSION.user.email:''}
+function toEmail(a){a=(a||'').trim();return a.indexOf('@')>=0?a:a+'@class.app';}
+function acctName(){return userEmail().replace('@class.app','');}
+async function sb(path,opts){opts=opts||{};const h=Object.assign({'apikey':SUPABASE_ANON,'Content-Type':'application/json'},opts.headers||{});
+  if(SESSION&&SESSION.access_token&&!opts.noauth)h['Authorization']='Bearer '+SESSION.access_token;
+  const r=await fetch(SUPABASE_URL+path,Object.assign({},opts,{headers:h}));
+  const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+  if(!r.ok)throw new Error((j&&(j.msg||j.error_description||j.error||j.message))||('HTTP '+r.status));return j;}
+function setAuth(j){if(j&&j.access_token)saveSession({access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+((j.expires_in||3600)*1000),user:j.user});}
+async function doSignUp(e,p){const j=await sb('/auth/v1/signup',{method:'POST',noauth:true,body:JSON.stringify({email:toEmail(e),password:p})});setAuth(j);return j;}
+async function doSignIn(e,p){const j=await sb('/auth/v1/token?grant_type=password',{method:'POST',noauth:true,body:JSON.stringify({email:toEmail(e),password:p})});setAuth(j);return j;}
+async function doRefresh(){if(!SESSION||!SESSION.refresh_token)return false;try{const j=await sb('/auth/v1/token?grant_type=refresh_token',{method:'POST',noauth:true,body:JSON.stringify({refresh_token:SESSION.refresh_token})});setAuth(j);return true}catch(e){saveSession(null);return false}}
+async function authOK(){if(!SESSION)return false;if(SESSION.expires_at-Date.now()<60000){if(!await doRefresh())return false}return loggedIn();}
+async function cloudLoad(){if(!await authOK())return null;const j=await sb('/rest/v1/mistakes?select=data&user_id=eq.'+SESSION.user.id+'&app=eq.'+APPID);return (j&&j[0]&&j[0].data)||[];}
+async function cloudSave(arr){if(!await authOK())return;await sb('/rest/v1/mistakes?on_conflict=user_id,app',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:SESSION.user.id,app:APPID,data:arr,updated_at:new Date().toISOString()})});}
+function loadM(){try{return JSON.parse(localStorage.getItem(MKEY)||'[]')}catch(e){return []}}
+function saveM(a){try{localStorage.setItem(MKEY,JSON.stringify(a))}catch(e){}}
+function mkKey(r){return (r.round||'')+'|'+(r.t||'')+'|'+(r.en||'')+'|'+(r.mode||'')}
+function mergeArr(a,b){const m=new Map();[...(a||[]),...(b||[])].forEach(r=>m.set(mkKey(r),r));return [...m.values()];}
+async function syncDown(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoad();const merged=mergeArr(loadM(),cloud);saveM(merged);await cloudSave(merged);}catch(e){console.warn('sync',e)}}
+function cloudMirror(){if(CLOUD&&loggedIn())cloudSave(loadM()).catch(()=>{})}
+function newRound(){quizRound=new Date().toISOString();}
+function logMistake(rec){rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadM();a.push(rec);saveM(a);cloudMirror();}
+function acctMsg(t,k){const m=$('#amsg');if(m){m.textContent=t;m.className='amsg'+(k?(' '+k):'')}}
+function acctHTML(){
+  if(!CLOUD)return '';
+  if(loggedIn())return '<div class="acct"><span>👤 已登入:<b>'+esc(acctName())+'</b>　<span style="color:var(--ok)">雲端同步中</span></span><span class="abtns"><button class="btn" onclick="acctSync()">↻ 從雲端同步</button><button class="btn" onclick="acctLogout()">登出</button></span></div>';
+  return '<div class="acct acct-form"><div class="atitle">👤 會員登入:登入後錯題會存到雲端,換裝置也看得到(與字音字形／形音義 App 同一組帳號)</div><input id="aem" type="text" placeholder="姓名／座號 或 Email" autocomplete="username"><input id="apw" type="password" placeholder="密碼(至少 6 碼)" autocomplete="current-password"><div class="abtns"><button class="btn brand" onclick="acctLogin()">登入</button><button class="btn" onclick="acctReg()">註冊新帳號</button></div><div id="amsg" class="amsg"></div></div>';
+}
+window.acctLogin=async function(){var e=$('#aem').value.trim(),p=$('#apw').value;if(!e||!p)return acctMsg('請輸入帳號與密碼','bad');acctMsg('登入中…');try{await doSignIn(e,p);await syncDown();renderWrong();}catch(x){acctMsg('登入失敗:'+x.message,'bad')}};
+window.acctReg=async function(){var e=$('#aem').value.trim(),p=$('#apw').value;if(!e||p.length<6)return acctMsg('請輸入帳號,密碼至少 6 碼','bad');acctMsg('註冊中…');try{await doSignUp(e,p);if(loggedIn()){await syncDown();renderWrong();}else acctMsg('已送出註冊,請完成驗證後登入','ok');}catch(x){acctMsg('註冊失敗:'+x.message,'bad')}};
+window.acctLogout=function(){saveSession(null);renderWrong();};
+window.acctSync=async function(){await syncDown();renderWrong();};
+window.wExport=function(){var blob=new Blob([JSON.stringify(loadM(),null,1)],{type:'application/json'});var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download='英文錯題本.json';a.click();URL.revokeObjectURL(u);};
+window.wImport=function(){var i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=function(){var f=i.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{saveM(mergeArr(loadM(),JSON.parse(rd.result)));cloudMirror();renderWrong();}catch(e){alert('匯入失敗:'+e.message)}};rd.readAsText(f);};i.click();};
+window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;saveM([]);if(CLOUD&&loggedIn())cloudSave([]).catch(function(){});renderWrong();};
+function renderWrong(){
+  var host=$("#wrong"); if(!host)return;
+  var a=loadM();
+  var h=acctHTML();
+  h+='<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><div class="stat">共 '+a.length+' 筆錯題</div><div class="abtns"><button class="btn ghost sm" onclick="wExport()">⬇匯出</button><button class="btn ghost sm" onclick="wImport()">⬆匯入</button><button class="btn ghost sm" onclick="wClear()">🗑清空</button></div></div>';
+  if(!a.length){host.innerHTML=h+'<p class="stat" style="margin-top:24px">還沒有錯題。去測驗吧!答錯的會自動收進這裡 📚</p>';return;}
+  var groups={};a.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
+  var rounds=Object.keys(groups).sort().reverse();
+  rounds.forEach(function(rd){
+    var items=groups[rd];
+    h+='<div style="margin-top:14px"><div class="stat">🕒 '+esc(new Date(rd).toLocaleString())+'（'+items.length+' 題）</div>';
+    h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(r.mode||'')+'</span></div></div></div></div>';}).join('');
+    h+='</div>';
+  });
+  host.innerHTML=h;
+}
+loadSession(); renderWrong(); if(CLOUD&&loggedIn())syncDown().then(renderWrong).catch(function(){});
 
 /* init */
 renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
