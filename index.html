@@ -104,8 +104,8 @@
   .opt.correct{background:#e7f8ef;border-color:var(--ok);color:var(--ok)}
   .opt.wrong{background:#fdeaea;border-color:var(--bad);color:var(--bad)}
   .opt.dim{opacity:.55}
-  .typebox{display:flex;gap:8px;margin-top:14px}
-  .typebox input{flex:1;padding:14px;border-radius:14px;border:2px solid var(--line);font-size:1.2rem;text-align:center}
+  .typebox{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .typebox input{flex:1;min-width:140px;padding:14px;border-radius:14px;border:2px solid var(--line);font-size:1.2rem;text-align:center}
   .feedback{margin-top:14px;font-weight:800;min-height:24px}
   .feedback.ok{color:var(--ok)} .feedback.bad{color:var(--bad)}
   .fbex{font-weight:600;color:var(--muted);font-size:.88rem;margin-top:6px}
@@ -257,6 +257,7 @@
         <div class="opts" id="qopts"></div>
         <div class="typebox" id="qtypebox" style="display:none">
           <input id="qinput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="輸入英文單字…">
+          <input id="qinputzh" type="text" autocomplete="off" placeholder="輸入中文意思…" style="display:none">
           <button class="btn primary" id="qsubmit">送出</button>
         </div>
         <div class="feedback" id="qfeedback"></div>
@@ -292,9 +293,9 @@
       <h3>題型</h3>
       <div class="row">
         <button class="chip active" data-vtype="type3">拼三態</button>
-        <button class="chip" data-vtype="zh2v">中文→動詞</button>
-        <button class="chip" data-vtype="v2zh">動詞→中文</button>
+        <button class="chip" data-vtype="zhv">中文↔動詞</button>
         <button class="chip" data-vtype="past2base">過去式→原形</button>
+        <button class="chip" data-vtype="past2spell">過去式→拼原形＋中文</button>
         <button class="chip" data-vtype="mix">混合</button>
       </div>
       <div class="row">
@@ -1806,6 +1807,7 @@ $$("[data-qtype]").forEach(c=>c.onclick=()=>{$$("[data-qtype]").forEach(x=>x.cla
 let questions=[], qi=0, score=0, wrong=[];
 const TYPES=["en2zh","zh2en","listen","spell","cloze","listenspell"];
 const TYPELABEL={en2zh:"看英文 → 選中文",zh2en:"看中文 → 選英文",listen:"🔊 聽發音 → 選單字",spell:"看中文 → 拼出英文",cloze:"📖 看例句 → 選單字",listenspell:"🎧 聽發音 → 拼出單字"};
+const EASON_GROUPS=new Set(["eason","wonderskills"]); // 這兩個課程的「看例句」改成拼字作答（不給選項）
 function clozeBlank(v){
   const s=v.ex&&v.ex.en;
   if(!s)return v.def||null;
@@ -1817,16 +1819,31 @@ function clozeBlank(v){
   const m=s.match(new RegExp(pat,"i"));
   return m?s.replace(m[0],"＿＿＿＿"):(v.def||null);
 }
+/* ---- 誘答選字：優先挑拼字相似（易混淆）的字 ---- */
+function levo(a,b){a=(a||"").toLowerCase();b=(b||"").toLowerCase();var m=a.length,n=b.length,d=[];for(var i=0;i<=m;i++)d[i]=[i];for(var j=0;j<=n;j++)d[0][j]=j;for(var i=1;i<=m;i++)for(var j=1;j<=n;j++){var c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);}return d[m][n];}
+function simScore(a,b){a=(a||"").toLowerCase();b=(b||"").toLowerCase();if(!a||!b||a===b)return 0;var maxl=Math.max(a.length,b.length)||1;var s=1-levo(a,b)/maxl;if(a[0]===b[0])s+=0.25;if(a[a.length-1]===b[b.length-1])s+=0.1;if(Math.abs(a.length-b.length)<=1)s+=0.1;return s;}
+/* 從 pool 挑 n 個誘答：先同詞性、依英文拼字相似度排序取前段，再隨機取 n 個（key＝顯示/去重欄位） */
+function pickDistractors(word,pool,n,key){
+  var cand=pool.filter(function(v){return v.id!==word.id && v[key]!==word[key];});
+  var samePos=cand.filter(function(v){return v.pos===word.pos;});
+  var base=(samePos.length>=n)?samePos:cand;
+  var scored=base.map(function(v){return {v:v,s:simScore(v.en,word.en)};}).sort(function(x,y){return y.s-x.s;});
+  var uniq=[],seen={};seen[word[key]]=1;
+  scored.forEach(function(o){if(!seen[o.v[key]]){seen[o.v[key]]=1;uniq.push(o.v);}});
+  var topPool=uniq.slice(0,Math.max(n+3,7));
+  return sample(topPool,Math.min(n,topPool.length));
+}
 function makeQuestion(word,pool,type){
   if(type==="spell"||type==="listenspell")return{type,word};
   if(type==="cloze"){
     const blank=clozeBlank(word);
     if(!blank)return makeQuestion(word,pool,"zh2en");
-    const distract=sample(pool.filter(v=>v.id!==word.id && v.en!==word.en),3);
+    if(EASON_GROUPS.has(word.group))return{type,word,cloze:blank,spell:true};
+    const distract=pickDistractors(word,pool,3,"en");
     return{type,word,cloze:blank,opts:shuffle([word,...distract])};
   }
   const key=(type==="en2zh")?"zh":"en";
-  const distract=sample(pool.filter(v=>v.id!==word.id && v[key]!==word[key]),3);
+  const distract=pickDistractors(word,pool,3,key);
   return{type,word,opts:shuffle([word,...distract]),key};
 }
 $("#startquiz").onclick=()=>{
@@ -1850,9 +1867,16 @@ function renderQuestion(){
   $("#qnext").style.display="none";
   const optsBox=$("#qopts"), typeBox=$("#qtypebox");
   $("#qprompt").style.fontSize="";$("#qprompt").style.lineHeight="";$("#qprompt").onclick=null;$("#qprompt").style.cursor="";
-  if(q.type==="spell"||q.type==="listenspell"){
+  if(q.type==="spell"||q.type==="listenspell"||(q.type==="cloze"&&q.spell)){
     optsBox.style.display="none";typeBox.style.display="flex";
-    if(q.type==="listenspell"){
+    if(q.type==="cloze"){
+      const spoken=(q.word.ex&&q.word.ex.en)?q.word.ex.en:q.cloze;
+      $("#qtypelabel").textContent="📖 看例句 → 拼出單字";
+      $("#qprompt").style.fontSize="1.35rem";$("#qprompt").style.lineHeight="1.5";
+      $("#qprompt").textContent="🔊 "+q.cloze;$("#qprompt").style.cursor="pointer";$("#qprompt").onclick=()=>speak(spoken);
+      $("#qsub").textContent="聽例句、看語境，拼出英文並輸入中文意思　（首字母 "+q.word.en[0]+"　共 "+q.word.en.replace(/ /g,'').length+" 字母．點題目可再聽一次）";
+      speak(spoken);
+    }else if(q.type==="listenspell"){
       $("#qprompt").textContent="🔊";$("#qprompt").style.cursor="pointer";$("#qprompt").onclick=()=>speak(q.word.en);
       $("#qsub").textContent="聽發音，拼出單字　（中文："+q.word.zh+"　共 "+q.word.en.replace(/ /g,'').length+" 字母）";
       speak(q.word.en);
@@ -1860,7 +1884,11 @@ function renderQuestion(){
       $("#qprompt").textContent=q.word.zh;
       $("#qsub").textContent=q.word.pos+"　提示： "+q.word.en[0]+" ___ ("+q.word.en.replace(/ /g,'').length+" 字母)";
     }
-    $("#qinput").value="";$("#qinput").disabled=false;setTimeout(()=>$("#qinput").focus(),50);
+    $("#qinput").value="";$("#qinput").disabled=false;
+    const _zin=$("#qinputzh");_zin.value="";_zin.disabled=false;
+    _zin.style.display=(q.type==="cloze"&&q.spell)?"":"none";
+    $("#qinput").placeholder=(q.type==="cloze"&&q.spell)?"拼出英文單字…":"輸入英文單字…";
+    setTimeout(()=>$("#qinput").focus(),50);
   }else{
     typeBox.style.display="none";optsBox.style.display="grid";
     if(q.type==="en2zh"){$("#qprompt").textContent=q.word.en;$("#qsub").textContent=q.word.pos;}
@@ -1883,10 +1911,22 @@ function choose(btn,opt,q){
 }
 $("#qsubmit").onclick=submitSpell;
 $("#qinput").addEventListener("keydown",e=>{if(e.key==="Enter")submitSpell();});
+$("#qinputzh").addEventListener("keydown",e=>{if(e.key==="Enter")submitSpell();});
+function zhMatch(input,zh){
+  const clean=s=>(s||"").replace(/\s+/g,"").replace(/[()（）.。,，、;；:：\/]/g,"");
+  const a=clean(input);if(!a)return false;
+  const b=clean(zh);
+  if(a===b)return true;
+  const segs=String(zh).split(/[、，,;；\/]/).map(x=>clean(x)).filter(Boolean);
+  if(segs.includes(a))return true;
+  return a.length>=2 && b.includes(a);
+}
 function submitSpell(){
   const q=questions[qi];if($("#qinput").disabled)return;
   const ans=$("#qinput").value.trim().toLowerCase().replace(/\s+/g," ");
-  const ok=ans===q.word.en.toLowerCase();$("#qinput").disabled=true;
+  let ok=ans===q.word.en.toLowerCase();
+  if(q.type==="cloze"&&q.spell){ok=ok&&zhMatch($("#qinputzh").value,q.word.zh);$("#qinputzh").disabled=true;}
+  $("#qinput").disabled=true;
   if(ok){score++;fb(true,q);}else{wrong.push(q);fb(false,q);}
 }
 function fb(ok,q){
@@ -1983,28 +2023,36 @@ function vBrowse(){
   h+='</table></div>';
   $("#vout").innerHTML=h;
 }
-const VTL={type3:"看原形 → 拼三態",zh2v:"看中文 → 選動詞",v2zh:"看動詞 → 選中文",past2base:"看過去式 → 選原形"};
+const VTL={type3:"看原形 → 拼三態",zh2v:"看中文 → 選動詞",v2zh:"看動詞 → 選中文",past2base:"看過去式 → 選原形",past2spell:"看過去式 → 拼原形＋中文"};
 let vq=[], vi=0, vscore=0, vwrong=[];
 function vPickType(r){
   var t=vtype;
-  if(t==="mix"){ var pool=["type3","zh2v","v2zh","past2base"]; t=pool[Math.floor(Math.random()*pool.length)]; }
-  if(t==="past2base" && !r[4]) t="v2zh";
+  if(t==="mix"){ var pool=["type3","zh2v","v2zh","past2base","past2spell"]; t=pool[Math.floor(Math.random()*pool.length)]; }
+  if(t==="zhv"){ t=(Math.floor(Math.random()*2)?"zh2v":"v2zh"); }
+  if((t==="past2base"||t==="past2spell") && !r[4]) t="v2zh";
   if(t==="type3" && !(r[4]||r[5])) t="v2zh";
   return t;
 }
+function vDistract(r,byBase,n){
+  // 依英文原形拼字相似度挑易混淆的動詞；顯示欄位（原形或中文）去重
+  var pool=vData().filter(function(x){return x!==r;});
+  var ansDisp=byBase?r[1]:r[6];
+  var scored=pool.map(function(x){return {x:x,s:simScore(x[1],r[1])};}).sort(function(a,b){return b.s-a.s;});
+  var uniq=[],seen={};seen[ansDisp]=1;
+  scored.forEach(function(o){var d=byBase?o.x[1]:o.x[6]; if(d && !seen[d]){seen[d]=1;uniq.push(o.x);}});
+  var topPool=uniq.slice(0,Math.max(n+3,7));
+  return sample(topPool,Math.min(n,topPool.length));
+}
 function vBuild(r,t){
-  if(t==="type3") return {r:r,t:t};
+  if(t==="type3"||t==="past2spell") return {r:r,t:t};
   var byBase=(t!=="v2zh");
-  var ansText=byBase?r[1]:r[6];
-  var pool=shuffle(vData().filter(function(x){return x!==r;}));
-  var ds=[], seen={}; seen[ansText]=1;
-  for(var i=0;i<pool.length && ds.length<3;i++){ var v=byBase?pool[i][1]:pool[i][6]; if(v && !seen[v]){seen[v]=1; ds.push(pool[i]);} }
+  var ds=vDistract(r,byBase,3);
   return {r:r,t:t,byBase:byBase,opts:shuffle([r].concat(ds))};
 }
 function vStart(){
   var arr=vRangeArr();
   if(vtype==="type3") arr=arr.filter(function(r){return r[4]||r[5];});
-  else if(vtype==="past2base") arr=arr.filter(function(r){return r[4];});
+  else if(vtype==="past2base"||vtype==="past2spell") arr=arr.filter(function(r){return r[4];});
   if(!arr.length){$("#vout").innerHTML='<p class="stat">此範圍沒有可測的動詞,請調整號碼或題型。</p>';return;}
   newRound();
   vq=shuffle(arr).map(function(r){return vBuild(r,vPickType(r));});
@@ -2029,6 +2077,15 @@ function vRender(){
     $("#vsubmit").onclick=vGrade3;
     $("#vpast").addEventListener("keydown",function(e){if(e.key==="Enter"){ if($("#vpp").disabled)vGrade3(); else $("#vpp").focus(); }});
     $("#vpp").addEventListener("keydown",function(e){if(e.key==="Enter")vGrade3();});
+  } else if(q.t==="past2spell"){
+    h+='<div class="qprompt">'+esc(r[4])+' <button class="speak" style="width:42px;height:42px;font-size:1.1rem" onclick="'+vsp(r[4])+'">🔊</button></div><div class="qsub">看過去式，拼出原形並輸入中文意思</div>';
+    h+='<div class="typebox"><div style="flex:1"><div class="stat" style="text-align:center">原形</div><input id="vbase" autocomplete="off" autocapitalize="off" spellcheck="false"></div><div style="flex:1"><div class="stat" style="text-align:center">中文</div><input id="vzh" autocomplete="off"></div></div>';
+    h+='<button class="btn primary" id="vsubmit" style="margin-top:12px;width:100%">送出</button><div class="feedback" id="vfb"></div></div>'+vNav();
+    $("#vout").innerHTML=h;
+    setTimeout(function(){var el=$("#vbase"); if(el)el.focus();},60);
+    $("#vsubmit").onclick=vGradeSpell;
+    $("#vbase").addEventListener("keydown",function(e){if(e.key==="Enter")$("#vzh").focus();});
+    $("#vzh").addEventListener("keydown",function(e){if(e.key==="Enter")vGradeSpell();});
   } else {
     var promptHTML, sub;
     if(q.t==="zh2v"){ promptHTML=esc(r[6]); sub="選出對應的動詞原形"; }
@@ -2050,6 +2107,16 @@ function vGrade3(){
   var f=$("#vfb"); f.className="feedback "+(ok?"ok":"bad");
   f.innerHTML=(ok?"✅ 答對!":"❌ 正解:")+"　過去式 <b>"+esc(r[4]||"—")+"</b>　過去分詞 <b>"+esc(r[5]||"—")+"</b> "+vsp3btn(r);
   $("#vsubmit").disabled=true; $("#vpast").disabled=true; $("#vpp").disabled=true;
+  vAfter(ok,r);
+}
+function vGradeSpell(){
+  var r=vq[vi].r; if($("#vsubmit").disabled)return;
+  var okBase=vnorm($("#vbase").value)===vnorm(r[1]);
+  var okZh=zhMatch($("#vzh").value,r[6]);
+  var ok=okBase&&okZh;
+  var f=$("#vfb"); f.className="feedback "+(ok?"ok":"bad");
+  f.innerHTML=(ok?"✅ 答對!":"❌ 正解:")+"　原形 <b>"+esc(r[1])+"</b>　"+esc(r[6])+"　（過去式 "+esc(r[4]||"—")+"／過去分詞 "+esc(r[5]||"—")+"） "+vsp3btn(r);
+  $("#vsubmit").disabled=true; $("#vbase").disabled=true; $("#vzh").disabled=true;
   vAfter(ok,r);
 }
 function vGradeMC(btn,o,q){
