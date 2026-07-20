@@ -1852,7 +1852,9 @@ $("#startquiz").onclick=()=>{
   if(!qpool.length){alert("目前沒有可測的單字(此範圍或釘選為空)");return;}
   let n=$("#qnum").value;n=(n==="all")?qpool.length:Math.min(+n,qpool.length);
   const picked=sample(qpool,n);
-  questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,scope,t);});
+  // 誘答取材放大到整冊（釘選則全部單字），單課測驗也能挑到夠多的相似易混淆字
+  const dpool = qPin ? VOCAB : VOCAB.filter(v=>v.group===activeGroup);
+  questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,dpool,t);});
   qi=0;score=0;wrong=[];
   newRound();
   $("#qcfg").style.display="none";$("#qresult").style.display="none";$("#qrun").style.display="block";
@@ -1959,7 +1961,7 @@ function finish(){
        <button class="btn ghost" id="backcfg">⚙ 設定</button>
      </div>${rv}</div>`;
   $("#qresult").style.display="block";
-  if(wrong.length)$("#retrywrong").onclick=()=>{const pool=VOCAB.filter(v=>qScope==="all"||v.lesson===qScope);questions=shuffle(wrong).map(q=>makeQuestion(q.word,pool,q.type));qi=0;score=0;wrong=[];$("#qresult").style.display="none";$("#qrun").style.display="block";renderQuestion();};
+  if(wrong.length)$("#retrywrong").onclick=()=>{const pool=qPin?VOCAB:VOCAB.filter(v=>v.group===activeGroup);questions=shuffle(wrong).map(q=>makeQuestion(q.word,pool,q.type));qi=0;score=0;wrong=[];$("#qresult").style.display="none";$("#qrun").style.display="block";renderQuestion();};
   $("#retryall").onclick=()=>{$("#qresult").style.display="none";$("#startquiz").click();};
   $("#backcfg").onclick=()=>{$("#qresult").style.display="none";$("#qcfg").style.display="block";showBest();};
 }
