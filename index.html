@@ -308,22 +308,22 @@
     <div id="vout" style="margin-top:12px"></div>
   </section>
   <section class="panel" id="poly">
-    <div class="row">
-      <button class="chip active" data-pset="2up">國中英語 2上</button>
-      <button class="chip" data-pset="3up">國中英語 3上</button>
-      <button class="chip" data-pset="mix">混合</button>
-    </div>
     <div class="qcfg">
-      <h3>課別</h3>
-      <div class="row" id="plessons"></div>
-      <h3>題型</h3>
+      <div class="stat" id="pcount" style="margin:0 0 10px;font-weight:700"></div>
+      <div class="row" id="plessons" style="display:none"></div>
+      <h3>組別（每 5 字一組）</h3>
+      <div class="row"><select id="pgsel"></select></div>
+      <div class="row">
+        <button class="btn primary" id="pcard">🃏 字卡</button>
+        <button class="btn ghost" id="pbrowse">📋 瀏覽</button>
+      </div>
+      <h3>測驗</h3>
       <div class="row">
         <button class="chip active" data-ptype="context">看例句 → 選字義</button>
         <button class="chip" data-ptype="word">看字義 → 選單字</button>
         <button class="chip" data-ptype="mix">混合</button>
       </div>
       <div class="row">
-        <button class="btn ghost" id="pbrowse">📋 瀏覽此範圍</button>
         <button class="btn primary" id="pquiz">📝 開始測驗</button>
       </div>
     </div>
@@ -2174,72 +2174,127 @@ vClampInputs(); vBrowse();
 
 /* ===== 一字多義 module ===== */
 const POLY=[
-  {"g": "2up", "les": "L1", "en": "spring", "senses": [{"p": "名詞", "zh": "春天", "ex": "The weather changes a lot in spring."}, {"p": "名詞", "zh": "泉", "ex": "Let's have a hot spring bath in Beitou."}]},
-  {"g": "2up", "les": "L1", "en": "fall", "senses": [{"p": "名詞", "zh": "秋天", "ex": "The weather is cool in early fall."}, {"p": "動詞", "zh": "掉落", "ex": "The glass fell to the floor and broke into pieces."}, {"p": "動詞", "zh": "跌倒", "ex": "Jeff fell over and cried."}]},
-  {"g": "2up", "les": "L1", "en": "shower", "senses": [{"p": "名詞", "zh": "陣雨", "ex": "A short shower cooled down the hot summer day."}, {"p": "名詞", "zh": "淋浴", "ex": "My brother is taking a shower in the bathroom."}]},
-  {"g": "2up", "les": "L1", "en": "report", "senses": [{"p": "名詞", "zh": "報導", "ex": "Jessica checks the weather report on her smartphone."}, {"p": "名詞", "zh": "報告", "ex": "My teacher gave me a good grade on my science report."}, {"p": "動詞", "zh": "報導", "ex": "Mr. Cooper reports on sports news on TV every morning."}]},
-  {"g": "2up", "les": "L1", "en": "fix", "senses": [{"p": "動詞", "zh": "解決（問題）", "ex": "Ms. Yeh: Can any students fix the problem?<br>Todd: I can give it a try."}, {"p": "動詞", "zh": "修理", "ex": "The computer doesn't work. Victor is fixing it."}]},
-  {"g": "2up", "les": "L1", "en": "live", "senses": [{"p": "動詞", "zh": "生活", "ex": "Without air and water, animals can't live."}, {"p": "動詞", "zh": "居住", "ex": "Ian and I live on the same road, and we go to the same school."}]},
-  {"g": "2up", "les": "L1", "en": "lead", "senses": [{"p": "動詞", "zh": "導致", "ex": "Miranda's eating problem led to her short lifespan."}, {"p": "動詞", "zh": "帶領", "ex": "The man led us to the meeting room."}]},
-  {"g": "2up", "les": "L2", "en": "cold", "senses": [{"p": "名詞", "zh": "感冒", "ex": "Samuel caught a cold, so he slept all day."}, {"p": "形容詞", "zh": "冷的", "ex": "It is cold in November here."}]},
-  {"g": "2up", "les": "L2", "en": "mask", "senses": [{"p": "名詞", "zh": "口罩", "ex": "People should wear masks in the hospital."}, {"p": "名詞", "zh": "面具", "ex": "Everyone wore a mask at the party last night."}]},
-  {"g": "2up", "les": "L2", "en": "country", "senses": [{"p": "名詞", "zh": "國家", "ex": "Iceland is a beautiful country. You can see mountains and hot springs there."}, {"p": "名詞", "zh": "鄉間", "ex": "My parents moved from the city to the country."}]},
-  {"g": "2up", "les": "L2", "en": "serious", "senses": [{"p": "形容詞", "zh": "嚴重的", "ex": "Amy had a serious headache. She couldn't even sleep."}, {"p": "形容詞", "zh": "認真的", "ex": "Eason: Are you serious?<br>Gwen: Of course not. I'm just kidding."}]},
-  {"g": "2up", "les": "L2", "en": "hurt", "senses": [{"p": "動詞", "zh": "疼痛", "ex": "My head hurt, so I took some medicine and went to sleep."}, {"p": "動詞", "zh": "弄傷", "ex": "Watch out! You may hurt your fingers."}, {"p": "形容詞", "zh": "受傷的", "ex": "Albert fell off the chair and got hurt."}]},
-  {"g": "2up", "les": "L2", "en": "treat", "senses": [{"p": "動詞", "zh": "治療", "ex": "The doctor treats many sick people every day."}, {"p": "動詞", "zh": "對待", "ex": "Parents should treat their children all the same."}, {"p": "動詞", "zh": "請客", "ex": "Jim treated his friends to dinner last night."}]},
-  {"g": "2up", "les": "L2", "en": "heavy", "senses": [{"p": "形容詞", "zh": "厚實的", "ex": "Sam bought a heavy coat for his wife."}, {"p": "形容詞", "zh": "重的", "ex": "There are twenty books in my bag. They are heavy."}]},
-  {"g": "2up", "les": "L2", "en": "strong", "senses": [{"p": "形容詞", "zh": "強壯的", "ex": "Hulk has strong arms."}, {"p": "形容詞", "zh": "堅固的", "ex": "The chair is not strong. Don't sit on it."}]},
-  {"g": "3up", "les": "", "en": "appear", "senses": [{"p": "v.", "zh": "似乎"}, {"p": "v.", "zh": "出現"}], "ex": "Josh appears to be in love with Amy because his face lights up every time she appears."},
-  {"g": "3up", "les": "", "en": "bat", "senses": [{"p": "n.", "zh": "球棒"}, {"p": "n.", "zh": "蝙蝠"}], "ex": "The boy with a baseball bat is watching the bats flying through the air."},
-  {"g": "3up", "les": "", "en": "cheat", "senses": [{"p": "v.", "zh": "作弊"}, {"p": "v.", "zh": "欺騙"}], "ex": "June might cheat during a card game, but she'll never try to cheat people out of their money."},
-  {"g": "3up", "les": "", "en": "deal", "senses": [{"p": "v.", "zh": "交易；處理（+ with）"}, {"p": "n.", "zh": "交易"}], "ex": "Though the businessman doesn't usually deal with foreign factories, this job sounds like a really good deal."},
-  {"g": "3up", "les": "", "en": "fail", "senses": [{"p": "v.", "zh": "不及格"}, {"p": "v.", "zh": "失敗"}], "ex": "If Kimmy fails the test, she'll fail to get into the top company."},
-  {"g": "3up", "les": "", "en": "fool", "senses": [{"p": "n.", "zh": "傻瓜"}, {"p": "v.", "zh": "愚弄"}], "ex": "Everyone thought he was a fool. However, he fooled everyone."},
-  {"g": "3up", "les": "", "en": "lie", "senses": [{"p": "v.", "zh": "說謊"}, {"p": "n.", "zh": "謊言"}], "ex": "They say your nose grows longer if you lie, but isn't that a lie, too?"},
-  {"g": "3up", "les": "", "en": "mark", "senses": [{"p": "v.", "zh": "標示；評分"}, {"p": "n.", "zh": "目標；標記；分數"}], "ex": "Miss Daniels wanted to mark twenty test papers by six o'clock, but it went slowly. She couldn't hit the mark."},
-  {"g": "3up", "les": "", "en": "mean", "senses": [{"p": "adj.", "zh": "卑鄙的"}, {"p": "v.", "zh": "意思是"}], "ex": "It is mean of those kids to laugh at Roger just because he doesn't know what the word means."},
-  {"g": "3up", "les": "", "en": "mind", "senses": [{"p": "v.", "zh": "介意"}, {"p": "n.", "zh": "頭腦"}], "ex": "The boss will not mind if we share our ideas. She likes to know what is on our minds."},
-  {"g": "3up", "les": "", "en": "raise", "senses": [{"p": "v.", "zh": "引起"}, {"p": "v.", "zh": "增加"}, {"p": "v.", "zh": "養育"}], "ex": "The meeting has raised some problems. For example, if the boss doesn't raise the workers' pay, some people will have a hard time raising their children."},
-  {"g": "3up", "les": "", "en": "paint", "senses": [{"p": "v.", "zh": "（用顏料）畫"}, {"p": "n.", "zh": "顏料；油漆"}], "ex": "Don't paint the wall with cheap paint, or the color will quickly change in the sun."},
-  {"g": "3up", "les": "", "en": "paste", "senses": [{"p": "n.", "zh": "漿糊"}, {"p": "v.", "zh": "黏貼"}], "ex": "We need some paste to paste these ads up."},
-  {"g": "3up", "les": "", "en": "pop", "senses": [{"p": "n.", "zh": "流行音樂"}, {"p": "v.", "zh": "爆開"}], "ex": "Judy listened to some pop music when she watched her kids trying to pop the balloons."},
-  {"g": "3up", "les": "", "en": "present", "senses": [{"p": "v.", "zh": "展現"}, {"p": "n.", "zh": "禮物"}], "ex": "Although everybody presented the boy with a birthday gift, he liked his parents' present the most."},
-  {"g": "3up", "les": "", "en": "pretty", "senses": [{"p": "adj.", "zh": "漂亮的"}, {"p": "adv.", "zh": "相當地"}], "ex": "Joann is really pretty. She looks good even when she's pretty tired."},
-  {"g": "3up", "les": "", "en": "rise", "senses": [{"p": "v.", "zh": "上升；增加"}, {"p": "n.", "zh": "上漲；升高"}], "ex": "If temperatures keep rising, it is going to lead to a rise in sea levels, too!"},
-  {"g": "3up", "les": "", "en": "tip", "senses": [{"p": "v.", "zh": "給……小費"}, {"p": "n.", "zh": "小費"}], "ex": "People in Taiwan don't usually tip, so the waitress was surprised when someone left her a $1 tip!"},
-  {"g": "3up", "les": "", "en": "trick", "senses": [{"p": "n.", "zh": "騙局；惡作劇"}, {"p": "v.", "zh": "欺騙"}], "ex": "Because little Johnny knows quite a few magic tricks, it's really not that easy to trick him."},
-  {"g": "3up", "les": "", "en": "type", "senses": [{"p": "n.", "zh": "種類；類型"}, {"p": "v.", "zh": "打字"}], "ex": "Jim never used this type of computer before. That's why it took him so long to type everything up."},
-  {"g": "3up", "les": "", "en": "wave", "senses": [{"p": "n.", "zh": "浪"}, {"p": "v.", "zh": "揮（手）"}], "ex": "When Megan surfed along the big blue wave, she waved at her fans on the beach."},
-  {"g": "mix", "les": "", "en": "kid", "senses": [{"p": "名詞", "zh": "小孩", "ex": "Don't be mad at Tom. He's just a kid."}, {"p": "動詞", "zh": "開玩笑", "ex": "I'm not kidding. I'm serious."}]},
-  {"g": "mix", "les": "", "en": "cook", "senses": [{"p": "名詞", "zh": "廚師", "ex": "James is a great cook. This is his restaurant."}, {"p": "動詞", "zh": "煮；烹飪", "ex": "I usually cook a big meal on Sundays."}]},
-  {"g": "mix", "les": "", "en": "pretty", "senses": [{"p": "形容詞", "zh": "漂亮的", "ex": "Amy got a pretty dress on her birthday."}, {"p": "副詞", "zh": "相當", "ex": "I'm pretty sure I met the man before."}]},
-  {"g": "mix", "les": "", "en": "heavy", "senses": [{"p": "形容詞", "zh": "重的；厚實的", "ex": "You're too heavy. You need to exercise more."}, {"p": "形容詞", "zh": "大量的", "ex": "The traffic on this street is very heavy."}]},
-  {"g": "mix", "les": "", "en": "fine", "senses": [{"p": "形容詞", "zh": "好的", "ex": "The hat looks fine on you."}, {"p": "形容詞", "zh": "晴朗的", "ex": "I hope the weather will stay fine tomorrow."}, {"p": "名詞", "zh": "罰款", "ex": "The thief faced a month in jail and a heavy fine."}]},
-  {"g": "mix", "les": "", "en": "light", "senses": [{"p": "名詞", "zh": "燈；光線", "ex": "All the lights in the room were off."}, {"p": "形容詞", "zh": "輕的；淺色的", "ex": "The girl in light blue is my sister."}, {"p": "動詞", "zh": "點燃；點亮", "ex": "The stars light up the night sky."}]},
-  {"g": "mix", "les": "", "en": "bank", "senses": [{"p": "名詞", "zh": "銀行", "ex": "I keep most of my money in the bank."}, {"p": "名詞", "zh": "堤；岸", "ex": "He stood on the river bank to watch fish."}]},
-  {"g": "mix", "les": "", "en": "park", "senses": [{"p": "名詞", "zh": "公園", "ex": "Let's have a picnic in the park."}, {"p": "動詞", "zh": "停車", "ex": "I parked my car here, but it was towed away."}]},
-  {"g": "mix", "les": "", "en": "fall", "senses": [{"p": "動詞", "zh": "掉落", "ex": "The plate fell and broke into pieces."}, {"p": "名詞", "zh": "秋天", "ex": "Fall comes between summer and winter."}]},
-  {"g": "mix", "les": "", "en": "leave", "senses": [{"p": "動詞", "zh": "離開", "ex": "You guys can leave without me."}, {"p": "動詞", "zh": "留下", "ex": "Bob left me a letter and ran away."}]},
-  {"g": "mix", "les": "", "en": "book", "senses": [{"p": "名詞", "zh": "書", "ex": "I am reading a book by Ashley Bryan."}, {"p": "動詞", "zh": "預訂", "ex": "Sally booked a flight to the UK."}]},
-  {"g": "mix", "les": "", "en": "letter", "senses": [{"p": "名詞", "zh": "信件", "ex": "I sent Mr. Li a letter of thanks today."}, {"p": "名詞", "zh": "字母", "ex": "There are 26 letters in the English alphabet."}]},
-  {"g": "mix", "les": "", "en": "glass", "senses": [{"p": "名詞", "zh": "眼鏡（恆用複數）", "ex": "I put on glasses to see things better."}, {"p": "名詞", "zh": "玻璃杯（可數）", "ex": "There are four glasses in the box."}, {"p": "名詞", "zh": "玻璃（不可數）", "ex": "This type of glass doesn't break easily."}]},
-  {"g": "mix", "les": "", "en": "exercise", "senses": [{"p": "動詞", "zh": "運動", "ex": "You should exercise more to lose weight."}, {"p": "名詞", "zh": "運動", "ex": "Swimming is good exercise for the old."}, {"p": "名詞", "zh": "習題", "ex": "Please do the math exercises on page 10."}]},
-  {"g": "mix", "les": "", "en": "paint", "senses": [{"p": "動詞", "zh": "（用顏料）畫；給……上油漆", "ex": "I made a guitar and painted it red."}, {"p": "名詞", "zh": "顏料；油漆", "ex": "The paint on the bench is still wet."}]},
+  {"g": "all", "les": "", "en": "spring", "senses": [{"p": "名詞", "zh": "春天", "ex": "The weather changes a lot in spring."}, {"p": "名詞", "zh": "泉", "ex": "Let's have a hot spring bath in Beitou."}]},
+  {"g": "all", "les": "", "en": "fall", "senses": [{"p": "名詞", "zh": "秋天", "ex": "The weather is cool in early fall."}, {"p": "動詞", "zh": "掉落", "ex": "The glass fell to the floor and broke into pieces."}, {"p": "動詞", "zh": "跌倒", "ex": "Jeff fell over and cried."}]},
+  {"g": "all", "les": "", "en": "shower", "senses": [{"p": "名詞", "zh": "陣雨", "ex": "A short shower cooled down the hot summer day."}, {"p": "名詞", "zh": "淋浴", "ex": "My brother is taking a shower in the bathroom."}]},
+  {"g": "all", "les": "", "en": "report", "senses": [{"p": "名詞", "zh": "報導", "ex": "Jessica checks the weather report on her smartphone."}, {"p": "名詞", "zh": "報告", "ex": "My teacher gave me a good grade on my science report."}, {"p": "動詞", "zh": "報導", "ex": "Mr. Cooper reports on sports news on TV every morning."}]},
+  {"g": "all", "les": "", "en": "fix", "senses": [{"p": "動詞", "zh": "解決（問題）", "ex": "Ms. Yeh: Can any students fix the problem?<br>Todd: I can give it a try."}, {"p": "動詞", "zh": "修理", "ex": "The computer doesn't work. Victor is fixing it."}]},
+  {"g": "all", "les": "", "en": "live", "senses": [{"p": "動詞", "zh": "生活", "ex": "Without air and water, animals can't live."}, {"p": "動詞", "zh": "居住", "ex": "Ian and I live on the same road, and we go to the same school."}]},
+  {"g": "all", "les": "", "en": "lead", "senses": [{"p": "動詞", "zh": "導致", "ex": "Miranda's eating problem led to her short lifespan."}, {"p": "動詞", "zh": "帶領", "ex": "The man led us to the meeting room."}]},
+  {"g": "all", "les": "", "en": "cold", "senses": [{"p": "名詞", "zh": "感冒", "ex": "Max caught a bad cold, so he couldn't go to the beach with us."}, {"p": "形容詞", "zh": "冷的", "ex": "It's cold in the house. Is the heating on?"}]},
+  {"g": "all", "les": "", "en": "mask", "senses": [{"p": "名詞", "zh": "口罩", "ex": "People should wear masks in the hospital."}, {"p": "名詞", "zh": "面具", "ex": "Everyone wore a mask at the party last night."}]},
+  {"g": "all", "les": "", "en": "country", "senses": [{"p": "名詞", "zh": "國家", "ex": "Iceland is a beautiful country. You can see mountains and hot springs there."}, {"p": "名詞", "zh": "鄉間", "ex": "My parents moved from the city to the country."}]},
+  {"g": "all", "les": "", "en": "serious", "senses": [{"p": "形容詞", "zh": "嚴重的", "ex": "Amy had a serious headache. She couldn't even sleep."}, {"p": "形容詞", "zh": "認真的", "ex": "Eason: Are you serious?<br>Gwen: Of course not. I'm just kidding."}]},
+  {"g": "all", "les": "", "en": "hurt", "senses": [{"p": "動詞", "zh": "疼痛", "ex": "My head hurt, so I took some medicine and went to sleep."}, {"p": "動詞", "zh": "弄傷", "ex": "Watch out! You may hurt your fingers."}, {"p": "形容詞", "zh": "受傷的", "ex": "Albert fell off the chair and got hurt."}]},
+  {"g": "all", "les": "", "en": "treat", "senses": [{"p": "動詞", "zh": "治療", "ex": "The doctor treats many sick people every day."}, {"p": "動詞", "zh": "對待", "ex": "Parents should treat their children all the same."}, {"p": "動詞", "zh": "請客", "ex": "Jim treated his friends to dinner last night."}]},
+  {"g": "all", "les": "", "en": "heavy", "senses": [{"p": "形容詞", "zh": "重的；厚實的", "ex": "You're too heavy. You need to exercise more."}, {"p": "形容詞", "zh": "大量的", "ex": "The traffic on this street is very heavy."}]},
+  {"g": "all", "les": "", "en": "strong", "senses": [{"p": "形容詞", "zh": "強壯的", "ex": "Hulk has strong arms."}, {"p": "形容詞", "zh": "堅固的", "ex": "The chair is not strong. Don't sit on it."}]},
+  {"g": "all", "les": "", "en": "appear", "senses": [{"p": "v.", "zh": "似乎"}, {"p": "v.", "zh": "出現"}], "ex": "Josh appears to be in love with Amy because his face lights up every time she appears."},
+  {"g": "all", "les": "", "en": "bat", "senses": [{"p": "名詞", "zh": "蝙蝠", "ex": "We seldom see bats in the daytime because they come out at night."}, {"p": "名詞", "zh": "球棒", "ex": "The baseball player swung his bat to hit the ball."}]},
+  {"g": "all", "les": "", "en": "cheat", "senses": [{"p": "v.", "zh": "作弊"}, {"p": "v.", "zh": "欺騙"}], "ex": "June might cheat during a card game, but she'll never try to cheat people out of their money."},
+  {"g": "all", "les": "", "en": "deal", "senses": [{"p": "v.", "zh": "交易；處理（+ with）"}, {"p": "n.", "zh": "交易"}], "ex": "Though the businessman doesn't usually deal with foreign factories, this job sounds like a really good deal."},
+  {"g": "all", "les": "", "en": "fail", "senses": [{"p": "v.", "zh": "不及格"}, {"p": "v.", "zh": "失敗"}], "ex": "If Kimmy fails the test, she'll fail to get into the top company."},
+  {"g": "all", "les": "", "en": "fool", "senses": [{"p": "n.", "zh": "傻瓜"}, {"p": "v.", "zh": "愚弄"}], "ex": "Everyone thought he was a fool. However, he fooled everyone."},
+  {"g": "all", "les": "", "en": "lie", "senses": [{"p": "v.", "zh": "說謊"}, {"p": "n.", "zh": "謊言"}], "ex": "They say your nose grows longer if you lie, but isn't that a lie, too?"},
+  {"g": "all", "les": "", "en": "mark", "senses": [{"p": "v.", "zh": "標示；評分"}, {"p": "n.", "zh": "目標；標記；分數"}], "ex": "Miss Daniels wanted to mark twenty test papers by six o'clock, but it went slowly. She couldn't hit the mark."},
+  {"g": "all", "les": "", "en": "mean", "senses": [{"p": "動詞", "zh": "意指", "ex": "I don't understand. What do you mean?"}, {"p": "形容詞", "zh": "刻薄的；吝嗇的", "ex": "Don't be so mean to the poor boy!"}]},
+  {"g": "all", "les": "", "en": "mind", "senses": [{"p": "名詞", "zh": "想法；心意", "ex": "Is there any hope that Dad will change his mind?"}, {"p": "動詞", "zh": "介意；留意", "ex": "Would you mind waiting outside?"}]},
+  {"g": "all", "les": "", "en": "raise", "senses": [{"p": "v.", "zh": "引起"}, {"p": "v.", "zh": "增加"}, {"p": "v.", "zh": "養育"}], "ex": "The meeting has raised some problems. For example, if the boss doesn't raise the workers' pay, some people will have a hard time raising their children."},
+  {"g": "all", "les": "", "en": "paint", "senses": [{"p": "動詞", "zh": "（用顏料）畫；給……上油漆", "ex": "I made a guitar and painted it red."}, {"p": "名詞", "zh": "顏料；油漆", "ex": "The paint on the bench is still wet."}]},
+  {"g": "all", "les": "", "en": "paste", "senses": [{"p": "n.", "zh": "漿糊"}, {"p": "v.", "zh": "黏貼"}], "ex": "We need some paste to paste these ads up."},
+  {"g": "all", "les": "", "en": "pop", "senses": [{"p": "n.", "zh": "流行音樂"}, {"p": "v.", "zh": "爆開"}], "ex": "Judy listened to some pop music when she watched her kids trying to pop the balloons."},
+  {"g": "all", "les": "", "en": "present", "senses": [{"p": "v.", "zh": "展現"}, {"p": "n.", "zh": "禮物"}], "ex": "Although everybody presented the boy with a birthday gift, he liked his parents' present the most."},
+  {"g": "all", "les": "", "en": "pretty", "senses": [{"p": "形容詞", "zh": "漂亮的", "ex": "Amy got a pretty dress on her birthday."}, {"p": "副詞", "zh": "相當", "ex": "I'm pretty sure I met the man before."}]},
+  {"g": "all", "les": "", "en": "rise", "senses": [{"p": "v.", "zh": "上升；增加"}, {"p": "n.", "zh": "上漲；升高"}], "ex": "If temperatures keep rising, it is going to lead to a rise in sea levels, too!"},
+  {"g": "all", "les": "", "en": "tip", "senses": [{"p": "v.", "zh": "給……小費"}, {"p": "n.", "zh": "小費"}], "ex": "People in Taiwan don't usually tip, so the waitress was surprised when someone left her a $1 tip!"},
+  {"g": "all", "les": "", "en": "trick", "senses": [{"p": "n.", "zh": "騙局；惡作劇"}, {"p": "v.", "zh": "欺騙"}], "ex": "Because little Johnny knows quite a few magic tricks, it's really not that easy to trick him."},
+  {"g": "all", "les": "", "en": "type", "senses": [{"p": "n.", "zh": "種類；類型"}, {"p": "v.", "zh": "打字"}], "ex": "Jim never used this type of computer before. That's why it took him so long to type everything up."},
+  {"g": "all", "les": "", "en": "wave", "senses": [{"p": "動詞", "zh": "揮（手）", "ex": "Ted waved us goodbye."}, {"p": "名詞", "zh": "海浪", "ex": "The waves on a typhoon day are usually high."}]},
+  {"g": "all", "les": "", "en": "kid", "senses": [{"p": "名詞", "zh": "小孩", "ex": "Don't be mad at Tom. He's just a kid."}, {"p": "動詞", "zh": "開玩笑", "ex": "I'm not kidding. I'm serious."}]},
+  {"g": "all", "les": "", "en": "cook", "senses": [{"p": "名詞", "zh": "廚師", "ex": "James is a great cook. This is his restaurant."}, {"p": "動詞", "zh": "煮；烹飪", "ex": "I usually cook a big meal on Sundays."}]},
+  {"g": "all", "les": "", "en": "fine", "senses": [{"p": "形容詞", "zh": "好的", "ex": "The hat looks fine on you."}, {"p": "形容詞", "zh": "晴朗的", "ex": "I hope the weather will stay fine tomorrow."}, {"p": "名詞", "zh": "罰款", "ex": "The thief faced a month in jail and a heavy fine."}]},
+  {"g": "all", "les": "", "en": "light", "senses": [{"p": "名詞", "zh": "燈；光線", "ex": "All the lights in the room were off."}, {"p": "形容詞", "zh": "輕的；淺色的", "ex": "The girl in light blue is my sister."}, {"p": "動詞", "zh": "點燃；點亮", "ex": "The stars light up the night sky."}]},
+  {"g": "all", "les": "", "en": "bank", "senses": [{"p": "名詞", "zh": "銀行", "ex": "I keep most of my money in the bank."}, {"p": "名詞", "zh": "堤；岸", "ex": "He stood on the river bank to watch fish."}]},
+  {"g": "all", "les": "", "en": "park", "senses": [{"p": "名詞", "zh": "公園", "ex": "Let's have a picnic in the park."}, {"p": "動詞", "zh": "停車", "ex": "I parked my car here, but it was towed away."}]},
+  {"g": "all", "les": "", "en": "leave", "senses": [{"p": "動詞", "zh": "離開", "ex": "You guys can leave without me."}, {"p": "動詞", "zh": "留下", "ex": "Bob left me a letter and ran away."}]},
+  {"g": "all", "les": "", "en": "book", "senses": [{"p": "名詞", "zh": "書", "ex": "I am reading a book by Ashley Bryan."}, {"p": "動詞", "zh": "預訂", "ex": "Sally booked a flight to the UK."}]},
+  {"g": "all", "les": "", "en": "letter", "senses": [{"p": "名詞", "zh": "信件", "ex": "I sent Mr. Li a letter of thanks today."}, {"p": "名詞", "zh": "字母", "ex": "There are 26 letters in the English alphabet."}]},
+  {"g": "all", "les": "", "en": "glass", "senses": [{"p": "名詞", "zh": "眼鏡（恆用複數）", "ex": "I put on glasses to see things better."}, {"p": "名詞", "zh": "玻璃杯（可數）", "ex": "There are four glasses in the box."}, {"p": "名詞", "zh": "玻璃（不可數）", "ex": "This type of glass doesn't break easily."}]},
+  {"g": "all", "les": "", "en": "exercise", "senses": [{"p": "動詞", "zh": "運動", "ex": "You should exercise more to lose weight."}, {"p": "名詞", "zh": "運動", "ex": "Swimming is good exercise for the old."}, {"p": "名詞", "zh": "習題", "ex": "Please do the math exercises on page 10."}]},
+  {"g": "all", "les": "", "en": "place", "senses": [{"p": "名詞", "zh": "地方", "ex": "There is no place like home."}, {"p": "動詞", "zh": "放置", "ex": "Please place these glass bowls with care."}]},
+  {"g": "all", "les": "", "en": "shop", "senses": [{"p": "名詞", "zh": "商店", "ex": "There are a lot of shops in this mall."}, {"p": "動詞", "zh": "購物", "ex": "Be careful when you shop on the Net."}]},
+  {"g": "all", "les": "", "en": "lesson", "senses": [{"p": "名詞", "zh": "課；課堂", "ex": "I plan to take acting lessons."}, {"p": "名詞", "zh": "教訓", "ex": "We learned a lesson from this accident."}]},
+  {"g": "all", "les": "", "en": "hold", "senses": [{"p": "動詞", "zh": "握住", "ex": "Please hold this bag for me."}, {"p": "動詞", "zh": "舉行", "ex": "They will hold a meeting at ten tomorrow."}]},
+  {"g": "all", "les": "", "en": "miss", "senses": [{"p": "動詞", "zh": "想念", "ex": "I miss my family in Taiwan so much."}, {"p": "動詞", "zh": "錯過", "ex": "We missed the last train home."}]},
+  {"g": "all", "les": "", "en": "fish", "senses": [{"p": "名詞", "zh": "魚", "ex": "There are many kinds of fishes in this aquarium."}, {"p": "名詞", "zh": "魚肉", "ex": "Many people in Japan eat raw fish."}, {"p": "動詞", "zh": "釣魚", "ex": "My grandpa goes fishing on weekends."}]},
+  {"g": "all", "les": "", "en": "drink", "senses": [{"p": "名詞", "zh": "飲料", "ex": "Let's go for a drink this Friday night."}, {"p": "動詞", "zh": "喝", "ex": "Drinking water from the river might make you sick."}]},
+  {"g": "all", "les": "", "en": "water", "senses": [{"p": "名詞", "zh": "水", "ex": "Around 65% of the human body is made up of water."}, {"p": "動詞", "zh": "澆水", "ex": "My mom waters her plants twice a week."}]},
+  {"g": "all", "les": "", "en": "full", "senses": [{"p": "形容詞", "zh": "飽的", "ex": "I just had a big meal. I'm quite full now."}, {"p": "形容詞", "zh": "滿的", "ex": "The glass is only half full."}]},
+  {"g": "all", "les": "", "en": "well", "senses": [{"p": "形容詞", "zh": "（身體）好的", "ex": "I hope you get well soon."}, {"p": "副詞", "zh": "好地", "ex": "My sister sings so well."}, {"p": "名詞", "zh": "井", "ex": "She put the bucket into the well to get water."}]},
+  {"g": "all", "les": "", "en": "surf", "senses": [{"p": "動詞", "zh": "衝浪", "ex": "The waves now aren't big enough for surfing."}, {"p": "動詞", "zh": "上網", "ex": "Jim spent hours every day surfing the Net."}]},
+  {"g": "all", "les": "", "en": "change", "senses": [{"p": "動詞", "zh": "改變", "ex": "I often change the password of my e-mail account."}, {"p": "名詞", "zh": "零錢", "ex": "I told the waiter to keep the change."}]},
+  {"g": "all", "les": "", "en": "work", "senses": [{"p": "動詞", "zh": "工作", "ex": "Fred works in a toy factory. He is a worker."}, {"p": "名詞", "zh": "工作；勞動", "ex": "My sister often brings her work home."}, {"p": "名詞", "zh": "作品", "ex": "We study many writers' works in our English class."}]},
+  {"g": "all", "les": "", "en": "stamp", "senses": [{"p": "名詞", "zh": "郵票", "ex": "Collecting stamps is my hobby."}, {"p": "名詞", "zh": "印章", "ex": "Please lend me your date stamp."}, {"p": "動詞", "zh": "跺腳", "ex": "She stamped her foot and shouted."}]},
+  {"g": "all", "les": "", "en": "dish", "senses": [{"p": "名詞", "zh": "菜肴", "ex": "Everyone will bring one dish to the party."}, {"p": "名詞", "zh": "盤子", "ex": "It's your turn to do the dishes."}]},
+  {"g": "all", "les": "", "en": "save", "senses": [{"p": "動詞", "zh": "拯救", "ex": "The doctor saved my life."}, {"p": "動詞", "zh": "儲存", "ex": "Let's save money for a new car."}, {"p": "動詞", "zh": "節省", "ex": "The sweep machine saves me a lot of time."}, {"p": "動詞", "zh": "留下；保留", "ex": "I'll save the cake and eat it later."}]},
+  {"g": "all", "les": "", "en": "plant", "senses": [{"p": "動詞", "zh": "種植", "ex": "We planted some tomatoes in our garden."}, {"p": "名詞", "zh": "植物", "ex": "Bean plants are easy to grow."}]},
+  {"g": "all", "les": "", "en": "train", "senses": [{"p": "名詞", "zh": "火車", "ex": "My dad goes to work by train."}, {"p": "動詞", "zh": "訓練", "ex": "My job is to train dogs."}]},
+  {"g": "all", "les": "", "en": "block", "senses": [{"p": "名詞", "zh": "街區", "ex": "Let's take a walk around the block."}, {"p": "動詞", "zh": "堵住", "ex": "The police cars blocked the road."}]},
+  {"g": "all", "les": "", "en": "past", "senses": [{"p": "名詞", "zh": "過去", "ex": "Few people know about his past."}, {"p": "介系詞", "zh": "經過", "ex": "It's half past ten. Time for bed."}]},
+  {"g": "all", "les": "", "en": "clear", "senses": [{"p": "形容詞", "zh": "晴朗的", "ex": "We like to go on a picnic on a clear day."}, {"p": "形容詞", "zh": "清楚的；清澈的", "ex": "The question wasn't clear enough, so I didn't answer it."}]},
+  {"g": "all", "les": "", "en": "land", "senses": [{"p": "動詞", "zh": "著陸；降落", "ex": "The plane landed safely."}, {"p": "名詞", "zh": "土地；地面", "ex": "The farmer owns a lot of land."}]},
+  {"g": "all", "les": "", "en": "turn", "senses": [{"p": "動詞", "zh": "轉（向）；翻頁", "ex": "Walk down the road and turn left at the park."}, {"p": "名詞", "zh": "（輪流的）機會", "ex": "Judy and I take turns taking care of Grandma."}]},
+  {"g": "all", "les": "", "en": "face", "senses": [{"p": "名詞", "zh": "臉", "ex": "Iris covered her face with her hands and cried."}, {"p": "動詞", "zh": "面對（事實）", "ex": "Face the fact, Tim. We don't have enough money."}]},
+  {"g": "all", "les": "", "en": "mail", "senses": [{"p": "名詞", "zh": "郵件；信件", "ex": "She opened her mail as she ate her breakfast."}, {"p": "動詞", "zh": "郵寄", "ex": "Check the stamp before you mail the letter."}]},
+  {"g": "all", "les": "", "en": "rule", "senses": [{"p": "名詞", "zh": "規則", "ex": "Please follow the rules in the museum."}, {"p": "動詞", "zh": "統治", "ex": "The robots rule the world in the movie."}]},
+  {"g": "all", "les": "", "en": "show", "senses": [{"p": "動詞", "zh": "展示；呈現", "ex": "Show me how the machine works."}, {"p": "名詞", "zh": "表演", "ex": "The show is free for children under 12 years old."}]},
+  {"g": "all", "les": "", "en": "order", "senses": [{"p": "動詞／名詞", "zh": "點餐；訂購", "ex": "Steven ordered a large pizza for lunch."}, {"p": "名詞", "zh": "順序", "ex": "Make sure you put the books back in the right order."}, {"p": "名詞", "zh": "命令", "ex": "I want the report ready by noon, and that's an order."}]},
+  {"g": "all", "les": "", "en": "ring", "senses": [{"p": "名詞", "zh": "戒指；鈴聲", "ex": "Jim bought a ring for his wife as her birthday gift."}, {"p": "動詞", "zh": "按（鈴）；搖（鈴）", "ex": "I rang the bell, but nobody answered the door."}]},
+  {"g": "all", "les": "", "en": "tie", "senses": [{"p": "名詞", "zh": "領帶", "ex": "The gray tie goes well with this blue shirt."}, {"p": "動詞", "zh": "綁", "ex": "My father tied the package with tape."}]},
+  {"g": "all", "les": "", "en": "comb", "senses": [{"p": "名詞", "zh": "梳子", "ex": "I always carry a comb in my handbag."}, {"p": "動詞", "zh": "梳", "ex": "Please comb your hair after you dry it."}]},
+  {"g": "all", "les": "", "en": "line", "senses": [{"p": "名詞", "zh": "線", "ex": "Draw a line with a red marker."}, {"p": "名詞", "zh": "排；列", "ex": "We're waiting in line. Please don't cut in line."}, {"p": "名詞", "zh": "臺詞；歌詞", "ex": "I only had two lines in the whole play."}]},
+  {"g": "all", "les": "", "en": "close", "senses": [{"p": "形容詞", "zh": "接近的；親近的", "ex": "Lucy is a close friend of mine."}, {"p": "副詞", "zh": "靠近地", "ex": "They live close to the museum."}, {"p": "動詞", "zh": "關閉", "ex": "I turned off the lights and closed the door."}]},
+  {"g": "all", "les": "", "en": "sign", "senses": [{"p": "動詞", "zh": "簽名", "ex": "You have a chance to win the prize. Sign up now."}, {"p": "名詞", "zh": "招牌；標誌；告示", "ex": "The strange sign looks like a banana."}]},
+  {"g": "all", "les": "", "en": "back", "senses": [{"p": "名詞", "zh": "後面", "ex": "Grandpa sat in the back of the car."}, {"p": "名詞", "zh": "背部", "ex": "My father goes to the doctor for his back problem."}]},
+  {"g": "all", "les": "", "en": "cost", "senses": [{"p": "動詞", "zh": "花費", "ex": "It cost me NT$10,000 to buy this smartphone."}, {"p": "名詞", "zh": "費用；成本", "ex": "I'm not sure how I'm going to pay the cost of going to college."}]},
+  {"g": "all", "les": "", "en": "roll", "senses": [{"p": "動詞", "zh": "滾動", "ex": "The ball is rolling quickly across the floor."}, {"p": "名詞", "zh": "（一）捲", "ex": "I bought a cheese roll for lunch."}]},
+  {"g": "all", "les": "", "en": "bow", "senses": [{"p": "動詞／名詞", "zh": "鞠躬 [baʊ]", "ex": "Matt bowed and left the stage."}, {"p": "名詞", "zh": "弓 [bo]", "ex": "The girl can draw a heavy bow."}, {"p": "名詞", "zh": "蝴蝶結 [bo]", "ex": "Please tie the ribbon in a bow."}]},
 ];
-let pset="2up", ptype="context", pLes="all";
-function polyAll(){return POLY.filter(p=>p.g===pset);}
-function polyPool(){return polyAll().filter(p=>pLes==="all"||p.les===pLes);}
-function polyLessons(){const s=[];polyAll().forEach(p=>{if(p.les&&s.indexOf(p.les)<0)s.push(p.les);});return s;}
-function renderPolyLessons(){
-  const box=$("#plessons"),ls=polyLessons();
-  if(!ls.length){box.innerHTML='<span class="stat">此冊不分課</span>';pLes="all";return;}
-  let h='<button class="chip '+(pLes==="all"?"active":"")+'" data-ples="all">全部</button>';
-  ls.forEach(l=>h+='<button class="chip '+(pLes===l?"active":"")+'" data-ples="'+l+'">'+l+'</button>');
-  box.innerHTML=h;
-  $$("[data-ples]").forEach(c=>c.onclick=()=>{$$("[data-ples]").forEach(x=>x.classList.remove("active"));c.classList.add("active");pLes=c.dataset.ples;pBrowse();});
-}
-$$("[data-pset]").forEach(c=>c.onclick=()=>{$$("[data-pset]").forEach(x=>x.classList.remove("active"));c.classList.add("active");pset=c.dataset.pset;pLes="all";renderPolyLessons();pBrowse();});
+let pset="all", ptype="context", pLes="all", pGroup=0, pcArr=[], pcIdx=0;
+function polyAll(){return POLY;}
+function groupPool(){return pGroup?POLY.slice((pGroup-1)*5,pGroup*5):POLY;}
+function polyPool(){return groupPool();}
+function pUpdateCount(){const c=$("#pcount");if(!c)return;
+  if(pGroup){const a=(pGroup-1)*5+1,b=Math.min(pGroup*5,POLY.length);c.textContent="第 "+pGroup+" 組・第 "+a+"–"+b+" 字（"+groupPool().length+" 字）";}
+  else c.textContent="共 "+POLY.length+" 組一字多義單字（不分冊）";}
+function pFillGroups(){const sel=$("#pgsel");if(!sel)return;const n=POLY.length,g=Math.ceil(n/5);
+  let h='<option value="0">全部（'+n+' 字）</option>';
+  for(let i=1;i<=g;i++){const a=(i-1)*5+1,b=Math.min(i*5,n);h+='<option value="'+i+'">第 '+i+' 組（'+a+'–'+b+' 字）</option>';}
+  sel.innerHTML=h;sel.value=String(pGroup);
+  sel.onchange=()=>{pGroup=+sel.value;pUpdateCount();};}
+function renderPolyLessons(){pFillGroups();pUpdateCount();}
+function pSenseHTML(p){let h='';
+  p.senses.forEach((s,i)=>{h+='<div style="margin:8px 0"><b style="color:var(--brand)">'+(i+1)+'. '+esc(s.zh)+'</b> <span style="color:var(--muted);font-size:.85rem">'+esc(s.p)+'</span>';
+    if(s.ex)h+='<div class="fbex" style="margin-top:2px">📝 '+pMark(s.ex,p.en)+' '+pSpeakBtn(s.ex)+'</div>';h+='</div>';});
+  if(p.ex)h+='<div class="fbex" style="margin-top:4px">📝 '+pMark(p.ex,p.en)+' '+pSpeakBtn(p.ex)+'</div>';return h;}
+function pCardBuild(){const arr=polyPool();if(!arr.length){$("#pout").innerHTML='<div class="empty">此組沒有資料</div>';return;}
+  pcArr=arr;pcIdx=0;pShowCard();}
+function pShowCard(){const p=pcArr[pcIdx],en=String(p.en).replace(/'/g,"\\'");
+  let h='<div class="counter" style="text-align:center;margin-bottom:6px">第 '+(pcIdx+1)+' / '+pcArr.length+' 字</div>';
+  h+='<div class="card-stage"><div class="flash" id="pflash">';
+  h+='<div class="face"><div class="en">'+esc(p.en)+'</div><button class="speak" onclick="event.stopPropagation();speak(\''+en+'\')">🔊</button><div class="hint">點卡片看字義＋例句</div></div>';
+  h+='<div class="face back" style="align-items:center"><div class="en" style="font-size:1.9rem">'+esc(p.en)+'</div><div class="detail" style="margin-top:10px;text-align:center">'+pSenseHTML(p)+'</div></div>';
+  h+='</div></div>';
+  h+='<div class="nav"><button class="btn ghost sm" id="pcprev">◀ 上一個</button><button class="btn primary" id="pcflip">🔄 翻面</button><button class="btn ghost sm" id="pcnext">下一個 ▶</button></div>';
+  h+='<div class="nav"><button class="btn ghost sm" id="pcback">⚙ 設定</button></div>';
+  $("#pout").innerHTML=h;const flash=$("#pflash");
+  flash.onclick=()=>flash.classList.toggle("flip");
+  $("#pcflip").onclick=()=>flash.classList.toggle("flip");
+  $("#pcprev").onclick=()=>{pcIdx=(pcIdx-1+pcArr.length)%pcArr.length;pShowCard();};
+  $("#pcnext").onclick=()=>{pcIdx=(pcIdx+1)%pcArr.length;pShowCard();};
+  $("#pcback").onclick=()=>{$("#pout").innerHTML="";};}
 $$("[data-ptype]").forEach(c=>c.onclick=()=>{$$("[data-ptype]").forEach(x=>x.classList.remove("active"));c.classList.add("active");ptype=c.dataset.ptype;});
+$("#pcard").onclick=pCardBuild;
 $("#pbrowse").onclick=pBrowse;
 $("#pquiz").onclick=pStart;
 function pMark(sent,word){
