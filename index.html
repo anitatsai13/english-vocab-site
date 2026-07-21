@@ -1715,6 +1715,7 @@ const EMOJI={
  "sequence":"🔢","calculate":"🧮","result":"📊","series":"🔗","chamber":"🚪","spiral":"🌀","recognize":"👁️","add to":"➕","look around":"👀","wonder":"🤔","sly":"🦊","furious":"😡","involve":"🔗","cooperation":"🤝","attempt":"🎯","float":"🎈","decide to":"✅","help yourself":"🍽️","let go of":"✋","grab":"✊","settle":"🏠","famine":"🍽️","starve":"😣","nugget":"🪙","fortune":"💰","railroad":"🛤️","relative":"👪","escape from":"🏃","be scared of":"😨","be ready to":"✅","dock":"⚓","vote":"🗳️","leader":"👑","convince":"💬","elect":"✅","candidate":"🧑‍💼","ballot":"🗳️","announce":"📢","take a long time":"⏳","talk about":"💬","grow up":"🌱","oil spill":"🛢️","struggle":"😤","endangered":"⚠️","survive":"💪","generation":"👨‍👩‍👧‍👦","rescue":"🚑","supplies":"📦","spotless":"✨","cover with":"🧣","find out":"🔍","go around":"🚶","seaweed":"🌿","recipe":"📋","double":"✖️","amount":"📊","beat":"🥄","dough":"🍞","sprinkle":"🧂","equal":"🟰","divide":"➗","stick to":"🩹","put ... in":"📥","something else":"🔀","destroy":"💥",
  "subject":"📚","topic":"💬","hairdryer":"💇","freeze / froze":"🧊","potato":"🥔","stick":"🪵","American":"🇺🇸","soldier":"🪖","main":"⭐","language":"🗣️","celebrate":"🎉","national":"🏛️","thick":"🧱","fry":"🍳","chocolate":"🍫","candy":"🍬","pumpkin":"🎃","bake":"🥧","Christmas Eve":"🎄","nobody":"🙅","wave":"👋","successful":"🏆","yet":"⏳","inch":"📏","king":"👑","delivery":"🚚","app":"📱","among":"👥","age":"🎂","chart":"📊","interested":"🤩","reason":"💭","helpful":"🤝","tired":"😫","such as":"💡","driver":"🚗","uniform":"👔","excited":"🤗","boring":"🥱","bored":"😑","tiring":"😮‍💨","surprising":"😲","surprised":"😮","couch":"🛋️","interest":"🎯","mind":"🧠","chance":"🎲","discount":"🏷️","list":"📋","at least":"🔢","location":"📍","tap":"👆","spider":"🕷️","gender":"🚻","stereotype":"🏷️","weak":"🥀","helpless":"😣","value":"💎","engineer":"👷","lawyer":"⚖️","powerful":"💪","honest":"😇","modern":"🏙️","limited":"🔒","present":"🎁","lovely":"🥰","born":"👶","pretty":"😍","brave":"🦁","expect":"🔮","blow / blew... away":"🌬️","be filled with":"🈵","thank goodness":"🙏","hope":"🌟","stupid":"🤪","ending":"🔚","allow":"✅","opinion":"💬","couldn't help but...":"🤷","put oneself in someone's shoes":"👟","create":"🎨","dictionary":"📖","case":"📁","combine":"🔗","form":"📝","pleasure":"😊","notebook (computer)":"💻","e-mail":"📧","by accident":"🤭","lip":"👄","whether":"❓","define":"🔤","butterfly":"🦋","interview":"🎤","salesman":"🧑‍💼","mad":"😡","hen":"🐔","blind":"🦯","bat":"🦇","glasses":"👓","farm":"🚜","glad":"😄","trouble":"⚠️","pain":"🤕","prayer":"🙏","foreign":"🌍","lollipop":"🍭","pink":"🩷","purple":"💜","company":"🏢","center":"🎯","boss":"👨‍💼","married":"💍","-sounding":"🔊","have a sweet tooth":"🍬","success":"🥇","mark":"✔️","belong to":"🔖","grown-up":"🧑","hard-working":"🐝","simple":"🔹","repeat":"🔁","dentist":"🦷","knowledge":"🧠","fail":"❌","deal with":"🛠️","fulfill":"🎯","popcorn":"🍿","school fair":"🎪","pop":"🎈","promotion":"📢","understand":"💡","profit":"💰","below":"⬇️","cheat":"🃏","waste":"🗑️","kilogram (= kg)":"⚖️","gram (= g)":"⚖️","pound (= lb)":"⚖️","peach":"🍑","pear":"🍐","lemon":"🍋","tomato":"🍅","pin":"📌","superglue":"🧴","paste":"🫙","jump rope":"🪢","marker":"🖊️","paint":"🖌️","total":"🧮","product":"📦","pass up":"🙅","sample":"🧪","level":"📶","cent":"🪙","centimeter (= cm)":"📏","height":"🧍","therefore":"➡️","shopkeeper":"🏪","come to think of it":"💭"
 };
+Object.assign(EMOJI,{"fall":"🍂","lead":"🧭","cold":"🤧","hurt":"🤕","fine":"👌","park":"🏞️","leave":"👋","book":"📖","shop":"🛍️","fish":"🐟","drink":"🥤","full":"🍽️","surf":"🏄","stamp":"📮","dish":"🍲","plant":"🌱","turn":"↩️","mail":"✉️","show":"🎭","comb":"🪮","cost":"💵","roll":"🥐"});
 const emo=w=>EMOJI[w]||"📘";
 
 /* ---------- tabs ---------- */
@@ -2273,22 +2274,26 @@ function pFillGroups(){const sel=$("#pgsel");if(!sel)return;const n=POLY.length,
   sel.innerHTML=h;sel.value=String(pGroup);
   sel.onchange=()=>{pGroup=+sel.value;pUpdateCount();};}
 function renderPolyLessons(){pFillGroups();pUpdateCount();}
+function pMini(t){return '<button class="miniSpeak" onclick="speak(\''+String(t).replace(/<br>/g,' ').replace(/"/g,'').replace(/'/g,"\\'")+'\')">🔊</button>';}
 function pSenseHTML(p){let h='';
-  p.senses.forEach((s,i)=>{h+='<div style="margin:8px 0"><b style="color:var(--brand)">'+(i+1)+'. '+esc(s.zh)+'</b> <span style="color:var(--muted);font-size:.85rem">'+esc(s.p)+'</span>';
-    if(s.ex)h+='<div class="fbex" style="margin-top:2px">📝 '+pMark(s.ex,p.en)+' '+pSpeakBtn(s.ex)+'</div>';h+='</div>';});
-  if(p.ex)h+='<div class="fbex" style="margin-top:4px">📝 '+pMark(p.ex,p.en)+' '+pSpeakBtn(p.ex)+'</div>';return h;}
+  p.senses.forEach((s,i)=>{
+    h+='<div class="blk ex"><div style="font-weight:800;color:var(--brand);font-size:1.05rem">'+(i+1)+'. '+esc(s.zh)+' <span style="color:var(--muted);font-weight:600;font-size:.8rem">'+esc(s.p)+'</span></div>';
+    if(s.ex)h+='<div class="exen" style="margin-top:5px">'+pMark(s.ex,p.en)+' '+pMini(s.ex)+'</div>';
+    h+='</div>';});
+  if(p.ex)h+='<div class="blk ex"><span class="lbl">📝 例句 '+pMini(p.ex)+'</span><div class="exen">'+pMark(p.ex,p.en)+'</div></div>';
+  return h;}
 function pCardBuild(){const arr=polyPool();if(!arr.length){$("#pout").innerHTML='<div class="empty">此組沒有資料</div>';return;}
   pcArr=arr;pcIdx=0;pShowCard();}
 function pShowCard(){const p=pcArr[pcIdx],en=String(p.en).replace(/'/g,"\\'");
   let h='<div class="counter" style="text-align:center;margin-bottom:6px">第 '+(pcIdx+1)+' / '+pcArr.length+' 字</div>';
   h+='<div class="card-stage"><div class="flash" id="pflash">';
-  h+='<div class="face"><div class="en">'+esc(p.en)+'</div><button class="speak" onclick="event.stopPropagation();speak(\''+en+'\')">🔊</button><div class="hint">點卡片看字義＋例句</div></div>';
-  h+='<div class="face back" style="align-items:center"><div class="en" style="font-size:1.9rem">'+esc(p.en)+'</div><div class="detail" style="margin-top:10px;text-align:center">'+pSenseHTML(p)+'</div></div>';
+  h+='<div class="face"><div class="emoji">'+emo(p.en)+'</div><div class="en">'+esc(p.en)+'</div><button class="speak" onclick="event.stopPropagation();speak(\''+en+'\')">🔊</button><div class="hint">點卡片看字義＋例句</div></div>';
+  h+='<div class="face back"><div class="emojiBack">'+emo(p.en)+'</div><div class="en" style="font-size:1.7rem;color:var(--brand);margin-top:4px">'+esc(p.en)+'</div><div class="pos">一字多義</div><div class="detail" style="margin-top:8px">'+pSenseHTML(p)+'</div><div class="hint">點卡片翻回單字</div></div>';
   h+='</div></div>';
   h+='<div class="nav"><button class="btn ghost sm" id="pcprev">◀ 上一個</button><button class="btn primary" id="pcflip">🔄 翻面</button><button class="btn ghost sm" id="pcnext">下一個 ▶</button></div>';
   h+='<div class="nav"><button class="btn ghost sm" id="pcback">⚙ 設定</button></div>';
   $("#pout").innerHTML=h;const flash=$("#pflash");
-  flash.onclick=()=>flash.classList.toggle("flip");
+  flash.onclick=(e)=>{if(e.target.closest('.miniSpeak')||e.target.closest('.speak'))return;flash.classList.toggle("flip");};
   $("#pcflip").onclick=()=>flash.classList.toggle("flip");
   $("#pcprev").onclick=()=>{pcIdx=(pcIdx-1+pcArr.length)%pcArr.length;pShowCard();};
   $("#pcnext").onclick=()=>{pcIdx=(pcIdx+1)%pcArr.length;pShowCard();};
