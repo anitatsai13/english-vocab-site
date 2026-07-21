@@ -310,6 +310,7 @@
     <div class="row">
       <button class="chip active" data-pset="2up">國中英語 2上</button>
       <button class="chip" data-pset="3up">國中英語 3上</button>
+      <button class="chip" data-pset="mix">混合</button>
     </div>
     <div class="qcfg">
       <h3>課別</h3>
@@ -2208,6 +2209,11 @@ const POLY=[
   {"g": "3up", "les": "", "en": "trick", "senses": [{"p": "n.", "zh": "騙局；惡作劇"}, {"p": "v.", "zh": "欺騙"}], "ex": "Because little Johnny knows quite a few magic tricks, it's really not that easy to trick him."},
   {"g": "3up", "les": "", "en": "type", "senses": [{"p": "n.", "zh": "種類；類型"}, {"p": "v.", "zh": "打字"}], "ex": "Jim never used this type of computer before. That's why it took him so long to type everything up."},
   {"g": "3up", "les": "", "en": "wave", "senses": [{"p": "n.", "zh": "浪"}, {"p": "v.", "zh": "揮（手）"}], "ex": "When Megan surfed along the big blue wave, she waved at her fans on the beach."},
+  {"g": "mix", "les": "", "en": "kid", "senses": [{"p": "名詞", "zh": "小孩", "ex": "Don't be mad at Tom. He's just a kid."}, {"p": "動詞", "zh": "開玩笑", "ex": "I'm not kidding. I'm serious."}]},
+  {"g": "mix", "les": "", "en": "cook", "senses": [{"p": "名詞", "zh": "廚師", "ex": "James is a great cook. This is his restaurant."}, {"p": "動詞", "zh": "煮；烹飪", "ex": "I usually cook a big meal on Sundays."}]},
+  {"g": "mix", "les": "", "en": "pretty", "senses": [{"p": "形容詞", "zh": "漂亮的", "ex": "Amy got a pretty dress on her birthday."}, {"p": "副詞", "zh": "相當", "ex": "I'm pretty sure I met the man before."}]},
+  {"g": "mix", "les": "", "en": "heavy", "senses": [{"p": "形容詞", "zh": "重的；厚實的", "ex": "You're too heavy. You need to exercise more."}, {"p": "形容詞", "zh": "大量的", "ex": "The traffic on this street is very heavy."}]},
+  {"g": "mix", "les": "", "en": "fine", "senses": [{"p": "形容詞", "zh": "好的", "ex": "The hat looks fine on you."}, {"p": "形容詞", "zh": "晴朗的", "ex": "I hope the weather will stay fine tomorrow."}, {"p": "名詞", "zh": "罰款", "ex": "The thief faced a month in jail and a heavy fine."}]},
 ];
 let pset="2up", ptype="context", pLes="all";
 function polyAll(){return POLY.filter(p=>p.g===pset);}
