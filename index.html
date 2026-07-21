@@ -175,6 +175,7 @@
     <button class="tab" data-tab="quiz">📝 測驗</button>
     <button class="tab" data-tab="exam">📜 考古題</button>
     <button class="tab" data-tab="verb">🔤 動詞三態</button>
+    <button class="tab" data-tab="poly">🔀 一字多義</button>
     <button class="tab" data-tab="wrong">📕 錯題本</button>
   </div>
 
@@ -304,6 +305,27 @@
       </div>
     </div>
     <div id="vout" style="margin-top:12px"></div>
+  </section>
+  <section class="panel" id="poly">
+    <div class="row">
+      <button class="chip active" data-pset="2up">國中英語 2上</button>
+      <button class="chip" data-pset="3up">國中英語 3上</button>
+    </div>
+    <div class="qcfg">
+      <h3>課別</h3>
+      <div class="row" id="plessons"></div>
+      <h3>題型</h3>
+      <div class="row">
+        <button class="chip active" data-ptype="context">看例句 → 選字義</button>
+        <button class="chip" data-ptype="word">看字義 → 選單字</button>
+        <button class="chip" data-ptype="mix">混合</button>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="pbrowse">📋 瀏覽此範圍</button>
+        <button class="btn primary" id="pquiz">📝 開始測驗</button>
+      </div>
+    </div>
+    <div id="pout" style="margin-top:12px"></div>
   </section>
   <section class="panel" id="wrong"></section>
 </div>
@@ -2144,9 +2166,155 @@ $("#vbrowse").onclick=vBrowse;
 $("#vquiz").onclick=vStart;
 try{
   var _gs=document.getElementById('groupSel');
-  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){ if(_gs) _gs.style.display = (t.dataset.tab==='verb'?'none':''); });});
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){ if(_gs) _gs.style.display = ((t.dataset.tab==='verb'||t.dataset.tab==='poly')?'none':''); });});
 }catch(e){}
 vClampInputs(); vBrowse();
+
+/* ===== 一字多義 module ===== */
+const POLY=[
+  {"g": "2up", "les": "L1", "en": "spring", "senses": [{"p": "名詞", "zh": "春天", "ex": "The weather changes a lot in spring."}, {"p": "名詞", "zh": "泉", "ex": "Let's have a hot spring bath in Beitou."}]},
+  {"g": "2up", "les": "L1", "en": "fall", "senses": [{"p": "名詞", "zh": "秋天", "ex": "The weather is cool in early fall."}, {"p": "動詞", "zh": "掉落", "ex": "The glass fell to the floor and broke into pieces."}, {"p": "動詞", "zh": "跌倒", "ex": "Jeff fell over and cried."}]},
+  {"g": "2up", "les": "L1", "en": "shower", "senses": [{"p": "名詞", "zh": "陣雨", "ex": "A short shower cooled down the hot summer day."}, {"p": "名詞", "zh": "淋浴", "ex": "My brother is taking a shower in the bathroom."}]},
+  {"g": "2up", "les": "L1", "en": "report", "senses": [{"p": "名詞", "zh": "報導", "ex": "Jessica checks the weather report on her smartphone."}, {"p": "名詞", "zh": "報告", "ex": "My teacher gave me a good grade on my science report."}, {"p": "動詞", "zh": "報導", "ex": "Mr. Cooper reports on sports news on TV every morning."}]},
+  {"g": "2up", "les": "L1", "en": "fix", "senses": [{"p": "動詞", "zh": "解決（問題）", "ex": "Ms. Yeh: Can any students fix the problem?<br>Todd: I can give it a try."}, {"p": "動詞", "zh": "修理", "ex": "The computer doesn't work. Victor is fixing it."}]},
+  {"g": "2up", "les": "L1", "en": "live", "senses": [{"p": "動詞", "zh": "生活", "ex": "Without air and water, animals can't live."}, {"p": "動詞", "zh": "居住", "ex": "Ian and I live on the same road, and we go to the same school."}]},
+  {"g": "2up", "les": "L1", "en": "lead", "senses": [{"p": "動詞", "zh": "導致", "ex": "Miranda's eating problem led to her short lifespan."}, {"p": "動詞", "zh": "帶領", "ex": "The man led us to the meeting room."}]},
+  {"g": "2up", "les": "L2", "en": "cold", "senses": [{"p": "名詞", "zh": "感冒", "ex": "Samuel caught a cold, so he slept all day."}, {"p": "形容詞", "zh": "冷的", "ex": "It is cold in November here."}]},
+  {"g": "2up", "les": "L2", "en": "mask", "senses": [{"p": "名詞", "zh": "口罩", "ex": "People should wear masks in the hospital."}, {"p": "名詞", "zh": "面具", "ex": "Everyone wore a mask at the party last night."}]},
+  {"g": "2up", "les": "L2", "en": "country", "senses": [{"p": "名詞", "zh": "國家", "ex": "Iceland is a beautiful country. You can see mountains and hot springs there."}, {"p": "名詞", "zh": "鄉間", "ex": "My parents moved from the city to the country."}]},
+  {"g": "2up", "les": "L2", "en": "serious", "senses": [{"p": "形容詞", "zh": "嚴重的", "ex": "Amy had a serious headache. She couldn't even sleep."}, {"p": "形容詞", "zh": "認真的", "ex": "Eason: Are you serious?<br>Gwen: Of course not. I'm just kidding."}]},
+  {"g": "2up", "les": "L2", "en": "hurt", "senses": [{"p": "動詞", "zh": "疼痛", "ex": "My head hurt, so I took some medicine and went to sleep."}, {"p": "動詞", "zh": "弄傷", "ex": "Watch out! You may hurt your fingers."}, {"p": "形容詞", "zh": "受傷的", "ex": "Albert fell off the chair and got hurt."}]},
+  {"g": "2up", "les": "L2", "en": "treat", "senses": [{"p": "動詞", "zh": "治療", "ex": "The doctor treats many sick people every day."}, {"p": "動詞", "zh": "對待", "ex": "Parents should treat their children all the same."}, {"p": "動詞", "zh": "請客", "ex": "Jim treated his friends to dinner last night."}]},
+  {"g": "2up", "les": "L2", "en": "heavy", "senses": [{"p": "形容詞", "zh": "厚實的", "ex": "Sam bought a heavy coat for his wife."}, {"p": "形容詞", "zh": "重的", "ex": "There are twenty books in my bag. They are heavy."}]},
+  {"g": "2up", "les": "L2", "en": "strong", "senses": [{"p": "形容詞", "zh": "強壯的", "ex": "Hulk has strong arms."}, {"p": "形容詞", "zh": "堅固的", "ex": "The chair is not strong. Don't sit on it."}]},
+  {"g": "3up", "les": "", "en": "appear", "senses": [{"p": "v.", "zh": "似乎"}, {"p": "v.", "zh": "出現"}], "ex": "Josh appears to be in love with Amy because his face lights up every time she appears."},
+  {"g": "3up", "les": "", "en": "bat", "senses": [{"p": "n.", "zh": "球棒"}, {"p": "n.", "zh": "蝙蝠"}], "ex": "The boy with a baseball bat is watching the bats flying through the air."},
+  {"g": "3up", "les": "", "en": "cheat", "senses": [{"p": "v.", "zh": "作弊"}, {"p": "v.", "zh": "欺騙"}], "ex": "June might cheat during a card game, but she'll never try to cheat people out of their money."},
+  {"g": "3up", "les": "", "en": "deal", "senses": [{"p": "v.", "zh": "交易；處理（+ with）"}, {"p": "n.", "zh": "交易"}], "ex": "Though the businessman doesn't usually deal with foreign factories, this job sounds like a really good deal."},
+  {"g": "3up", "les": "", "en": "fail", "senses": [{"p": "v.", "zh": "不及格"}, {"p": "v.", "zh": "失敗"}], "ex": "If Kimmy fails the test, she'll fail to get into the top company."},
+  {"g": "3up", "les": "", "en": "fool", "senses": [{"p": "n.", "zh": "傻瓜"}, {"p": "v.", "zh": "愚弄"}], "ex": "Everyone thought he was a fool. However, he fooled everyone."},
+  {"g": "3up", "les": "", "en": "lie", "senses": [{"p": "v.", "zh": "說謊"}, {"p": "n.", "zh": "謊言"}], "ex": "They say your nose grows longer if you lie, but isn't that a lie, too?"},
+  {"g": "3up", "les": "", "en": "mark", "senses": [{"p": "v.", "zh": "標示；評分"}, {"p": "n.", "zh": "目標；標記；分數"}], "ex": "Miss Daniels wanted to mark twenty test papers by six o'clock, but it went slowly. She couldn't hit the mark."},
+  {"g": "3up", "les": "", "en": "mean", "senses": [{"p": "adj.", "zh": "卑鄙的"}, {"p": "v.", "zh": "意思是"}], "ex": "It is mean of those kids to laugh at Roger just because he doesn't know what the word means."},
+  {"g": "3up", "les": "", "en": "mind", "senses": [{"p": "v.", "zh": "介意"}, {"p": "n.", "zh": "頭腦"}], "ex": "The boss will not mind if we share our ideas. She likes to know what is on our minds."},
+  {"g": "3up", "les": "", "en": "raise", "senses": [{"p": "v.", "zh": "引起"}, {"p": "v.", "zh": "增加"}, {"p": "v.", "zh": "養育"}], "ex": "The meeting has raised some problems. For example, if the boss doesn't raise the workers' pay, some people will have a hard time raising their children."},
+  {"g": "3up", "les": "", "en": "paint", "senses": [{"p": "v.", "zh": "（用顏料）畫"}, {"p": "n.", "zh": "顏料；油漆"}], "ex": "Don't paint the wall with cheap paint, or the color will quickly change in the sun."},
+  {"g": "3up", "les": "", "en": "paste", "senses": [{"p": "n.", "zh": "漿糊"}, {"p": "v.", "zh": "黏貼"}], "ex": "We need some paste to paste these ads up."},
+  {"g": "3up", "les": "", "en": "pop", "senses": [{"p": "n.", "zh": "流行音樂"}, {"p": "v.", "zh": "爆開"}], "ex": "Judy listened to some pop music when she watched her kids trying to pop the balloons."},
+  {"g": "3up", "les": "", "en": "present", "senses": [{"p": "v.", "zh": "展現"}, {"p": "n.", "zh": "禮物"}], "ex": "Although everybody presented the boy with a birthday gift, he liked his parents' present the most."},
+  {"g": "3up", "les": "", "en": "pretty", "senses": [{"p": "adj.", "zh": "漂亮的"}, {"p": "adv.", "zh": "相當地"}], "ex": "Joann is really pretty. She looks good even when she's pretty tired."},
+  {"g": "3up", "les": "", "en": "rise", "senses": [{"p": "v.", "zh": "上升；增加"}, {"p": "n.", "zh": "上漲；升高"}], "ex": "If temperatures keep rising, it is going to lead to a rise in sea levels, too!"},
+  {"g": "3up", "les": "", "en": "tip", "senses": [{"p": "v.", "zh": "給……小費"}, {"p": "n.", "zh": "小費"}], "ex": "People in Taiwan don't usually tip, so the waitress was surprised when someone left her a $1 tip!"},
+  {"g": "3up", "les": "", "en": "trick", "senses": [{"p": "n.", "zh": "騙局；惡作劇"}, {"p": "v.", "zh": "欺騙"}], "ex": "Because little Johnny knows quite a few magic tricks, it's really not that easy to trick him."},
+  {"g": "3up", "les": "", "en": "type", "senses": [{"p": "n.", "zh": "種類；類型"}, {"p": "v.", "zh": "打字"}], "ex": "Jim never used this type of computer before. That's why it took him so long to type everything up."},
+  {"g": "3up", "les": "", "en": "wave", "senses": [{"p": "n.", "zh": "浪"}, {"p": "v.", "zh": "揮（手）"}], "ex": "When Megan surfed along the big blue wave, she waved at her fans on the beach."},
+];
+let pset="2up", ptype="context", pLes="all";
+function polyAll(){return POLY.filter(p=>p.g===pset);}
+function polyPool(){return polyAll().filter(p=>pLes==="all"||p.les===pLes);}
+function polyLessons(){const s=[];polyAll().forEach(p=>{if(p.les&&s.indexOf(p.les)<0)s.push(p.les);});return s;}
+function renderPolyLessons(){
+  const box=$("#plessons"),ls=polyLessons();
+  if(!ls.length){box.innerHTML='<span class="stat">此冊不分課</span>';pLes="all";return;}
+  let h='<button class="chip '+(pLes==="all"?"active":"")+'" data-ples="all">全部</button>';
+  ls.forEach(l=>h+='<button class="chip '+(pLes===l?"active":"")+'" data-ples="'+l+'">'+l+'</button>');
+  box.innerHTML=h;
+  $$("[data-ples]").forEach(c=>c.onclick=()=>{$$("[data-ples]").forEach(x=>x.classList.remove("active"));c.classList.add("active");pLes=c.dataset.ples;pBrowse();});
+}
+$$("[data-pset]").forEach(c=>c.onclick=()=>{$$("[data-pset]").forEach(x=>x.classList.remove("active"));c.classList.add("active");pset=c.dataset.pset;pLes="all";renderPolyLessons();pBrowse();});
+$$("[data-ptype]").forEach(c=>c.onclick=()=>{$$("[data-ptype]").forEach(x=>x.classList.remove("active"));c.classList.add("active");ptype=c.dataset.ptype;});
+$("#pbrowse").onclick=pBrowse;
+$("#pquiz").onclick=pStart;
+function pMark(sent,word){
+  let s=esc(sent).replace(/&lt;br&gt;/g,"<br>");
+  try{const re=new RegExp("\\b("+String(word).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+")\\b","i");
+    if(re.test(s))return s.replace(re,'<span style="color:var(--brand);font-weight:800">$1</span>');}catch(e){}
+  return s;
+}
+function pSpeakBtn(t){return '<button class="speak" style="width:38px;height:38px;font-size:1rem" onclick="speak(\''+String(t).replace(/<br>/g,' ').replace(/"/g,'').replace(/'/g,"\\'")+'\')">🔊</button>';}
+function pBrowse(){
+  const arr=polyPool();
+  if(!arr.length){$("#pout").innerHTML='<div class="empty">此範圍沒有資料</div>';return;}
+  let h='<div class="stat">共 '+arr.length+' 個一字多義單字</div>';
+  arr.forEach(p=>{
+    h+='<div class="card" style="margin-bottom:12px"><div class="qprompt" style="font-size:1.5rem;margin:4px 0">'+esc(p.en)+' '+pSpeakBtn(p.en)+'</div>';
+    p.senses.forEach((s,i)=>{
+      h+='<div style="margin:6px 0"><b style="color:var(--brand)">'+(i+1)+'. '+esc(s.zh)+'</b> <span style="color:var(--muted)">'+esc(s.p)+'</span>';
+      if(s.ex)h+='<div class="fbex" style="margin-top:2px">📝 '+pMark(s.ex,p.en)+'</div>';
+      h+='</div>';
+    });
+    if(p.ex)h+='<div class="fbex" style="margin-top:4px">📝 '+pMark(p.ex,p.en)+'</div>';
+    h+='</div>';
+  });
+  $("#pout").innerHTML=h;
+}
+let pq=[],pqi=0,pscore=0,pwrong=[];
+function pHasCtx(p){return p.senses.some(s=>s.ex);}
+function pPickType(p){let t=ptype;if(t==="mix")t=(Math.random()<0.5&&pHasCtx(p))?"context":"word";if(t==="context"&&!pHasCtx(p))t="word";return t;}
+function pOtherSenses(p,n){const o=[];polyPool().forEach(x=>{if(x.en!==p.en)x.senses.forEach(s=>o.push(s.zh));});return sample([...new Set(o)].filter(z=>p.senses.every(s=>s.zh!==z)),n);}
+function pBuild(p){
+  const t=pPickType(p);
+  if(t==="context"){
+    const cand=p.senses.filter(s=>s.ex),s=cand[Math.floor(Math.random()*cand.length)];
+    let opts=[...new Set(p.senses.map(x=>x.zh))];
+    if(opts.length<4)opts=opts.concat(pOtherSenses(p,4-opts.length));
+    opts=[...new Set(opts)].slice(0,4);
+    if(opts.indexOf(s.zh)<0)opts[0]=s.zh;
+    return {t:"context",p,sense:s,ans:s.zh,opts:shuffle(opts)};
+  }
+  const s=p.senses[Math.floor(Math.random()*p.senses.length)];
+  const pool=polyPool().filter(x=>x.en!==p.en);
+  const scored=pool.map(x=>({en:x.en,sc:simScore(x.en,p.en)})).sort((a,b)=>b.sc-a.sc);
+  let ds=sample([...new Set(scored.slice(0,Math.max(6,3)).map(o=>o.en))],3);
+  if(ds.length<3)ds=ds.concat(sample(pool.map(x=>x.en).filter(e=>e!==p.en&&ds.indexOf(e)<0),3-ds.length));
+  return {t:"word",p,sense:s,ans:p.en,opts:shuffle([p.en,...ds])};
+}
+function pStart(){
+  const arr=polyPool();
+  if(!arr.length){$("#pout").innerHTML='<div class="empty">此範圍沒有可測的單字</div>';return;}
+  newRound();pq=shuffle(arr).map(pBuild);pqi=0;pscore=0;pwrong=[];pRender();
+}
+function pHead(){return '<div class="progress"><i style="width:'+(pqi/pq.length*100)+'%"></i></div><div class="counter" style="text-align:center;margin-bottom:8px">第 '+(pqi+1)+' / '+pq.length+' 題　|　得分 '+pscore+'</div>';}
+function pRender(){
+  const q=pq[pqi],p=q.p;
+  let h=pHead()+'<div class="qcard">';
+  if(q.t==="context"){
+    h+='<div class="qtype">🔀 看例句 → 選字義</div>';
+    h+='<div class="qprompt" style="font-size:1.3rem;line-height:1.5">'+pMark(q.sense.ex,p.en)+' '+pSpeakBtn(q.sense.ex)+'</div>';
+    h+='<div class="qsub">句中 <b>'+esc(p.en)+'</b> 是哪個意思?</div>';
+  }else{
+    h+='<div class="qtype">🔀 看字義 → 選單字</div>';
+    h+='<div class="qprompt" style="font-size:1.6rem">'+esc(q.sense.zh)+' <span style="color:var(--muted);font-size:1rem">'+esc(q.sense.p)+'</span></div>';
+    h+='<div class="qsub">選出對應的英文單字</div>';
+  }
+  h+='<div class="opts" id="popts"></div><div class="feedback" id="pfb"></div></div>';
+  h+='<div class="nav"><button class="btn ghost sm" id="pquit">結束</button><button class="btn primary" id="pnext" style="display:none">下一題 ▶</button></div>';
+  $("#pout").innerHTML=h;
+  const box=$("#popts");
+  q.opts.forEach(o=>{const b=document.createElement("button");b.className="opt";b.textContent=o;b.onclick=()=>pChoose(b,o,q);box.appendChild(b);});
+  $("#pquit").onclick=pBrowse;
+  $("#pnext").onclick=()=>{pqi++;if(pqi<pq.length)pRender();else pFinish();};
+}
+function pChoose(btn,o,q){
+  const ok=(o===q.ans);
+  $$("#popts .opt").forEach(b=>{b.onclick=null;b.classList.add("dim");if(b.textContent===q.ans){b.classList.add("correct");b.classList.remove("dim");}});
+  if(!ok)btn.classList.add("wrong");
+  if(ok)pscore++;else pwrong.push(q);
+  speak(q.p.en);
+  if(!ok)logMistake({mode:"poly_"+q.t,en:q.p.en,zh:q.ans,pos:q.sense.p,group:q.p.g,correct:q.p.en+" = "+q.ans});
+  const f=$("#pfb");f.className="feedback "+(ok?"ok":"bad");
+  f.innerHTML=(ok?"✅ 答對了！ ":"❌ 正解： ")+"<b>"+esc(q.p.en)+"</b> = "+esc(q.ans);
+  $("#pnext").style.display="inline-block";$("#pnext").focus();
+}
+function pFinish(){
+  const pct=Math.round(pscore/pq.length*100),emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
+  const rv=pwrong.length?'<div class="review"><h3 style="color:var(--muted)">📌 需複習（'+pwrong.length+'）</h3>'+pwrong.map(q=>'<div class="r"><b>'+esc(q.p.en)+'</b> — '+esc(q.ans)+'</div>').join('')+'</div>':'<p style="color:var(--ok);font-weight:800">🌟 全部答對！</p>';
+  $("#pout").innerHTML='<div class="scorebox"><div style="font-size:3rem">'+emoji+'</div><div class="big">'+pscore+' / '+pq.length+'</div><div style="font-weight:800;color:var(--muted)">答對率 '+pct+'%</div><div class="nav" style="margin-top:16px">'+(pwrong.length?'<button class="btn primary" id="pretrywrong">🔁 只測錯的</button>':'')+'<button class="btn '+(pwrong.length?'ghost':'primary')+'" id="pretry">↻ 再測一次</button><button class="btn ghost" id="pback">⚙ 設定</button></div>'+rv+'</div>';
+  if(pwrong.length)$("#pretrywrong").onclick=()=>{const w=pwrong.slice();pq=shuffle(w).map(q=>pBuild(q.p));pqi=0;pscore=0;pwrong=[];pRender();};
+  $("#pretry").onclick=pStart;
+  $("#pback").onclick=()=>{$("#pout").innerHTML="";};
+}
+renderPolyLessons();
 
 /* ===== account+wrong ===== */
 /* ===== 會員帳號 + 錯題本 module ===== */
