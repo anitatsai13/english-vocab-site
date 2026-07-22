@@ -2196,7 +2196,7 @@ const POLY=[
   {"g": "all", "les": "", "en": "deal", "senses": [{"p": "v.", "zh": "交易；處理（+ with）"}, {"p": "n.", "zh": "交易"}], "ex": "Though the businessman doesn't usually deal with foreign factories, this job sounds like a really good deal.", "t": "雖然這位商人通常不與外國工廠打交道,這筆生意聽起來真的很划算。"},
   {"g": "all", "les": "", "en": "fail", "senses": [{"p": "v.", "zh": "不及格"}, {"p": "v.", "zh": "失敗"}], "ex": "If Kimmy fails the test, she'll fail to get into the top company.", "t": "如果 Kimmy 考試不及格,她就無法進入頂尖公司。"},
   {"g": "all", "les": "", "en": "fool", "senses": [{"p": "n.", "zh": "傻瓜"}, {"p": "v.", "zh": "愚弄"}], "ex": "Everyone thought he was a fool. However, he fooled everyone.", "t": "大家都以為他是個傻瓜。然而,他愚弄了所有人。"},
-  {"g": "all", "les": "", "en": "lie", "senses": [{"p": "v.", "zh": "說謊"}, {"p": "n.", "zh": "謊言"}], "ex": "They say your nose grows longer if you lie, but isn't that a lie, too?", "t": "人們說如果你說謊鼻子會變長,但那不也是個謊言嗎?"},
+  {"g": "all", "les": "", "en": "lie", "senses": [{"p": "動詞", "zh": "躺下", "ex": "Mike is lying on the beach and enjoying the sun.", "t": "Mike 正躺在海灘上享受陽光。"}, {"p": "動詞", "zh": "說謊", "ex": "Rio was sad because his girlfriend lied to him.", "t": "Rio 很難過，因為他的女朋友對他說謊。"}, {"p": "名詞", "zh": "謊言"}], "ex": "They say your nose grows longer if you lie, but isn't that a lie, too?", "t": "人們說如果你說謊鼻子會變長,但那不也是個謊言嗎?"},
   {"g": "all", "les": "", "en": "mark", "senses": [{"p": "v.", "zh": "標示；評分"}, {"p": "n.", "zh": "目標；標記；分數"}], "ex": "Miss Daniels wanted to mark twenty test papers by six o'clock, but it went slowly. She couldn't hit the mark.", "t": "Daniels 老師想在六點前批改完二十份考卷,但進度很慢。她無法達成目標。"},
   {"g": "all", "les": "", "en": "mean", "senses": [{"p": "動詞", "zh": "意指", "ex": "I don't understand. What do you mean?", "t": "我不了解。你是什麼意思?"}, {"p": "形容詞", "zh": "刻薄的；吝嗇的", "ex": "Don't be so mean to the poor boy!", "t": "別對那可憐的男孩這麼刻薄!"}]},
   {"g": "all", "les": "", "en": "mind", "senses": [{"p": "名詞", "zh": "想法；心意", "ex": "Is there any hope that Dad will change his mind?", "t": "爸爸有沒有可能改變他的心意?"}, {"p": "動詞", "zh": "介意；留意", "ex": "Would you mind waiting outside?", "t": "你介意在外面等嗎?"}]},
@@ -2338,7 +2338,7 @@ function pBrowse(){
   $("#pout").innerHTML=h;
 }
 let pq=[],pqi=0,pscore=0,pwrong=[];
-const PIRR={fall:["fell","fallen"],lead:["led"],hold:["held"],leave:["left"],mean:["meant"],rise:["rose","risen"],ring:["rang","rung"],deal:["dealt"],get:["got","getting"],bite:["bit"],trip:["tripped"],hard:["harder","hardest"]};
+const PIRR={fall:["fell","fallen"],lead:["led"],hold:["held"],leave:["left"],mean:["meant"],rise:["rose","risen"],ring:["rang","rung"],deal:["dealt"],get:["got","getting"],bite:["bit"],trip:["tripped"],hard:["harder","hardest"],lie:["lay","lain","lying","lied"]};
 function pForms(base){const f=[base,base+"s",base+"es",base+"ed",base+"ing",base+"d"];
   if(base.endsWith("e"))f.push(base.slice(0,-1)+"ing");
   if(base.endsWith("y"))f.push(base.slice(0,-1)+"ies",base.slice(0,-1)+"ied");
