@@ -112,6 +112,9 @@
   .opt.correct{background:#e7f8ef;border-color:var(--ok);color:var(--ok)}
   .opt.wrong{background:#fdeaea;border-color:var(--bad);color:var(--bad)}
   .opt.dim{opacity:.55}
+  /* 看例句選字：10 個相似誘答，改 3 欄較緊湊的版面 */
+  .opts.many{grid-template-columns:repeat(3,1fr);gap:8px}
+  .opts.many .opt{padding:11px 8px;font-size:.98rem;border-radius:12px}
   .typebox{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
   .typebox input{flex:1;min-width:140px;padding:14px;border-radius:14px;border:2px solid var(--line);font-size:1.2rem;text-align:center}
   .feedback{margin-top:14px;font-weight:800;min-height:24px}
@@ -150,6 +153,7 @@
     .emoji{font-size:4.4rem}
     .qprompt{font-size:1.7rem}
     .opts{grid-template-columns:1fr}
+    .opts.many{grid-template-columns:1fr 1fr}
     .btn{padding:14px 16px;font-size:1.02rem}
     .detail{font-size:1rem}
   }
@@ -1839,7 +1843,18 @@ $$("[data-qtype]").forEach(c=>c.onclick=()=>{$$("[data-qtype]").forEach(x=>x.cla
 let questions=[], qi=0, score=0, wrong=[];
 const TYPES=["en2zh","zh2en","listen","spell","cloze","listenspell"];
 const TYPELABEL={en2zh:"看英文 → 選中文",zh2en:"看中文 → 選英文",listen:"🔊 聽發音 → 選單字",spell:"看中文 → 拼出英文",cloze:"📖 看例句 → 選單字",listenspell:"🎧 聽發音 → 拼出單字"};
-const EASON_GROUPS=new Set(["eason","wonderskills"]); // 這兩個課程的「看例句」改成拼字作答（不給選項）
+const EASON_GROUPS=new Set(["eason","wonderskills"]); // 這兩個課程的「看例句」給 CLOZE_OPTS 個拼字相似的誘答選項
+const CLOZE_OPTS=10; // 看例句選字（Eason／Wonderskills）的選項總數（含正解）
+const HALF_LESSON=6; // 半冊分界：Voc1-6 一組、Voc7-12 一組
+function lessonNo(v){const m=String((v&&v.lesson)||"").match(/(\d+)/);return m?+m[1]:0;}
+/* 誘答只從同半冊抽（題目在前 6 課就從 1-6 課挑，後 6 課就從 7-12 課挑）；同半冊字數不足才退回整冊 */
+function halfPool(word,pool){
+  const n=lessonNo(word);if(!n)return pool;
+  const same=pool.filter(function(v){var k=lessonNo(v);return k&&((k<=HALF_LESSON)===(n<=HALF_LESSON));});
+  return same.length>=CLOZE_OPTS+2?same:pool;
+}
+/* 唸例句時把空格唸成 "blank"，避免語音直接把答案唸出來 */
+function clozeSpeak(s){return String(s==null?"":s).replace(/[＿_]{2,}/g," blank ").replace(/\s{2,}/g," ").trim();}
 function clozeBlank(v){
   const s=v.ex&&v.ex.en;
   if(!s)return v.def||null;
@@ -1867,15 +1882,20 @@ function pickDistractors(word,pool,n,key){
 }
 function makeQuestion(word,pool,type){
   if(type==="spell"||type==="listenspell")return{type,word};
+  // Eason／Wonderskills：誘答限同半冊（前 6 課／後 6 課），其他課程維持整冊
+  const dp=EASON_GROUPS.has(word.group)?halfPool(word,pool):pool;
   if(type==="cloze"){
     const blank=clozeBlank(word);
     if(!blank)return makeQuestion(word,pool,"zh2en");
-    if(EASON_GROUPS.has(word.group))return{type,word,cloze:blank,spell:true};
-    const distract=pickDistractors(word,pool,3,"en");
+    if(EASON_GROUPS.has(word.group)){
+      const many=pickDistractors(word,dp,CLOZE_OPTS-1,"en");
+      return{type,word,cloze:blank,opts:shuffle([word,...many]),many:true};
+    }
+    const distract=pickDistractors(word,dp,3,"en");
     return{type,word,cloze:blank,opts:shuffle([word,...distract])};
   }
   const key=(type==="en2zh")?"zh":"en";
-  const distract=pickDistractors(word,pool,3,key);
+  const distract=pickDistractors(word,dp,3,key);
   return{type,word,opts:shuffle([word,...distract]),key};
 }
 $("#startquiz").onclick=()=>{
@@ -1927,9 +1947,24 @@ function renderQuestion(){
     typeBox.style.display="none";optsBox.style.display="grid";
     if(q.type==="en2zh"){$("#qprompt").textContent=q.word.en;$("#qsub").textContent=q.word.pos;}
     else if(q.type==="zh2en"){$("#qprompt").textContent=q.word.zh;$("#qsub").textContent=q.word.pos;}
-    else if(q.type==="cloze"){const byDef=!(q.word.ex&&q.word.ex.en);$("#qprompt").style.fontSize="1.35rem";$("#qprompt").style.lineHeight="1.5";$("#qprompt").textContent=q.cloze;$("#qtypelabel").textContent=byDef?"📖 看定義 → 選單字":"📖 看例句 → 選單字";$("#qsub").textContent=byDef?"依英文定義，選出正確的單字":"依例句語境，選出最適合填入空格的字";}
+    else if(q.type==="cloze"){
+      const byDef=!(q.word.ex&&q.word.ex.en);
+      $("#qprompt").style.fontSize="1.35rem";$("#qprompt").style.lineHeight="1.5";
+      $("#qtypelabel").textContent=byDef?"📖 看定義 → 選單字":"📖 看例句 → 選單字";
+      if(q.many){
+        // Eason／Wonderskills：唸例句（空格唸成 blank，不洩答案）＋ 10 個相似選項
+        const spoken=clozeSpeak(q.cloze);
+        $("#qprompt").textContent="🔊 "+q.cloze;
+        $("#qprompt").style.cursor="pointer";$("#qprompt").onclick=()=>speak(spoken);
+        $("#qsub").textContent=(byDef?"依英文定義，從 ":"聽例句、看語境，從 ")+q.opts.length+" 個相似的字中選出正確的　（點題目可再聽一次）";
+        speak(spoken);
+      }else{
+        $("#qprompt").textContent=q.cloze;
+        $("#qsub").textContent=byDef?"依英文定義，選出正確的單字":"依例句語境，選出最適合填入空格的字";
+      }
+    }
     else{$("#qprompt").textContent="🔊";$("#qsub").textContent="點下方喇叭再聽一次";speak(q.word.en);}
-    optsBox.innerHTML="";
+    optsBox.innerHTML="";optsBox.classList.toggle("many",!!q.many);
     q.opts.forEach(o=>{const b=document.createElement("button");b.className="opt";
       b.textContent=(q.type==="en2zh")?o.zh:o.en;b.onclick=()=>choose(b,o,q);optsBox.appendChild(b);});
     if(q.type==="listen"){const r=document.createElement("button");r.className="btn ghost sm";r.textContent="🔊 再聽一次";
