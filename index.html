@@ -324,7 +324,6 @@
   </section>
   <section class="panel" id="phrase">
     <div class="row" id="phCatChips"></div>
-    <div class="row" id="phSetChips"></div>
     <p class="stat">課本整理頁：重要片語 ・ 生活常用語 ・ 慣用語 ・ 點英文可發音</p>
     <div class="row">
       <button class="btn ghost sm" id="phToggle">🙈 遮住中文</button>
@@ -333,7 +332,7 @@
     <div id="phQuiz"></div>
     <div id="phlist"></div>
     <div class="phead" style="margin-top:26px;font-size:1.05rem">📝 片語題目（課本即時通）</div>
-    <p class="stat">片語整理頁附的練習題 ・ 依上方曲目晶片篩選 ・ 點選項作答</p>
+    <p class="stat">課本片語整理頁附的練習題 ・ 點選項作答</p>
     <div class="row">
       <button class="btn ghost sm" id="pexamToggle">👁 顯示全部答案</button>
       <button class="btn primary sm" id="pexamQuizBtn">📝 片語題目測驗</button>
@@ -2099,14 +2098,16 @@ const GTOPICS=[...new Set(GEXAM.map(e=>e.topic))];
 let XQ=null;
 function xqUI(kind){
   if(kind==="exam")return {list:"#examlist",box:"#examQuiz",btn:"#examQuizBtn",chips:"#examChips"};
-  if(kind==="pexam")return {list:"#pexamlist",box:"#pexamQuiz",btn:"#pexamQuizBtn",chips:"#phSetChips"};
+  if(kind==="pexam")return {list:"#pexamlist",box:"#pexamQuiz",btn:"#pexamQuizBtn",chips:"#phCatChips"};
+  if(kind==="wrong")return {list:"#wwrap",box:"#wQuizBox",btn:"#wQuizBtn",chips:null};
   return {list:"#gexamlist",box:"#gexamQuiz",btn:"#gexamQuizBtn",chips:"#gexamChips"};}
 function xqScope(kind){return kind==="exam"?activeGroup+"|"+eScope:kind==="pexam"?phSet:gKey();}
 function xqPool(kind){
   if(kind==="exam")return VOCAB.filter(v=>v.exam&&v.group===activeGroup&&(eScope==="all"||v.lesson===eScope))
     .map(v=>({q:v.exam.q,opts:v.exam.opts,ans:v.exam.ans,src:v.exam.src,label:v.lesson,say:v.en,exp:"",tip:""}));
-  if(kind==="pexam")return PEXAM.filter(e=>phSet==="all"||e.topic===phSet)
-    .map(e=>({q:e.q,opts:e.opts,ans:e.ans,src:e.src,label:e.topic,say:e.opts[e.ans],exp:e.exp||"",tip:""}));
+  if(kind==="pexam")return PEXAM
+    .map(e=>({q:e.q,opts:e.opts,ans:e.ans,src:e.src,label:"片語題目",say:e.opts[e.ans],exp:e.exp||"",tip:""}));
+  if(kind==="wrong")return wBuildPool(loadM());
   return GEXAM.filter(gMatch)
     .map(e=>({q:e.q,opts:e.opts,ans:e.ans,src:e.src,label:e.topic,say:e.opts[e.ans],exp:e.exp||"",tip:e.tip||""}));
 }
@@ -2120,11 +2121,12 @@ function xqStart(kind,only){
   xqRender();
 }
 function xqQuit(){
-  const u=xqUI(XQ.kind);
+  const u=xqUI(XQ.kind), k=XQ.kind;
   $(u.box).innerHTML="";
   $(u.list).style.display="";
   $(u.btn).style.display="";
   XQ=null;
+  if(k==="wrong")renderWrong(); /* 重測中新增的錯題要重繪列表 */
 }
 function xqRender(){
   const u=xqUI(XQ.kind), q=XQ.list[XQ.i], n=XQ.list.length;
@@ -2148,7 +2150,7 @@ function xqChoose(box,btn,q){
   if(ok)XQ.score++;else XQ.wrong.push(q);
   if(q.say)speak(q.say);
   const key=`(${"ABCD"[q.ans]}) ${q.opts[q.ans]}`;
-  if(!ok)logMistake({mode:XQ.kind==="exam"?"考古題":XQ.kind==="pexam"?"片語題目":"文法考古題",en:q.say,zh:q.label,pos:q.src,group:activeGroup,correct:key+"　"+q.label});
+  if(!ok)logMistake({mode:q.mode||(XQ.kind==="exam"?"考古題":XQ.kind==="pexam"?"片語題目":"文法考古題"),en:q.say,zh:q.zh||q.label,pos:q.src,group:activeGroup,correct:key+"　"+q.label});
   const e=box.querySelector(".expl");
   let s=`<span class="lbl">${ok?"✅ 答對了":"❌ 正解"}</span>${esc(key)}`;
   if(q.exp)s+=`<div style="margin-top:6px">${esc(q.exp)}</div>`;
@@ -2723,9 +2725,12 @@ renderPolyLessons();
 
 /* ===== 片語會話 module ===== */
 const PHRASE=[{"s":"曲目 6","c":"重要片語","en":"clean up","zh":"清理；打掃","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"shake hands","zh":"握手","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"take a look","zh":"看一下","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"take a picture","zh":"拍照","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"take a walk","zh":"散步","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"take a seat","zh":"坐下","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"thanks to","zh":"幸虧；由於","n":"","e":""},{"s":"曲目 6","c":"重要片語","en":"give one's thanks + to + 人","zh":"向某人表示感謝","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"Don't make any noise.","zh":"別製造噪音。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"Good to know.","zh":"很高興知道。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"Hurry up.","zh":"快一點。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"No problem.","zh":"沒問題。；不客氣。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"No sweat!","zh":"不費吹灰之力！；一點也不費力！","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"No way!","zh":"不會吧！；不可能！","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"Not really.","zh":"並非如此。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"Thank goodness!","zh":"謝天謝地！","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"That's new to me.","zh":"那對我而言是新的。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"How about...?","zh":"那～呢？","n":"= What about...?","e":""},{"s":"曲目 6","c":"生活常用語","en":"Watch out!","zh":"注意！","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"You are all in.","zh":"你們全部算在內。","n":"","e":""},{"s":"曲目 6","c":"生活常用語","en":"It's a piece of cake.","zh":"很簡單。","n":"= It's (as) easy as pie.","e":""},{"s":"曲目 6","c":"慣用語","en":"do me a favor","zh":"幫我一個忙","n":"","e":"Can you do me a favor, Alice?｜Sure, what's up?"},{"s":"曲目 6","c":"慣用語","en":"sleep on it","zh":"再考慮一下","n":"","e":"Can you take care of my roses in my garden this weekend?｜Well, I'll sleep on it. You know, I am a plant killer."},{"s":"曲目 9","c":"重要片語","en":"get up","zh":"起床","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"wash one's face","zh":"洗臉","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"brush one's teeth","zh":"刷牙","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"have breakfast / lunch / dinner","zh":"吃早／午／晚餐","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"do one's homework","zh":"做功課","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"listen to music","zh":"聽音樂","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"use the computer","zh":"使用電腦","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"walk the dog","zh":"遛狗","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"take a shower","zh":"淋浴","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"go to school","zh":"去上學","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"go to bed","zh":"去睡覺","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"go to work","zh":"去上班","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"go home","zh":"回家","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"go to the movies","zh":"去看電影","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"make a cake","zh":"做蛋糕","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"make trouble","zh":"製造麻煩","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"make up for...","zh":"彌補～","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"change into","zh":"變成","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"check out","zh":"借閱","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"fly a kite","zh":"放風箏","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"put one's all into...","zh":"盡全力～","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"save lives","zh":"拯救生命","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"stand out","zh":"突出；出眾；顯眼","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"take over","zh":"接管","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"a lot of","zh":"很多的","n":"= lots of","e":""},{"s":"曲目 9","c":"重要片語","en":"after work","zh":"下班後","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"by the way","zh":"順帶一提","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"during the day","zh":"日間","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"for + 數字 + hour(s)","zh":"有～小時之久","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"in one's free time","zh":"在某人空閒時","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"on the other hand","zh":"另一方面","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"on the school team","zh":"在校隊","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"on weekends","zh":"每個週末","n":"= every weekend","e":""},{"s":"曲目 9","c":"重要片語","en":"once or twice","zh":"一兩次","n":"","e":""},{"s":"曲目 9","c":"重要片語","en":"once in a blue moon","zh":"特別少；稀有","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"Good for you!","zh":"你真棒！","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"How come?","zh":"怎麼會？／為什麼？","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"How often...?","zh":"多常～？","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"I can't help it.","zh":"我沒有辦法。／我忍不住。","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"Give me a break.","zh":"饒了我吧。","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"That must be hard.","zh":"那一定很辛苦。","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"It's on me.","zh":"我請客。","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"You bet!","zh":"當然！","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"What do you mean?","zh":"你是什麼意思？","n":"","e":""},{"s":"曲目 9","c":"生活常用語","en":"Wait a minute!","zh":"等一下！","n":"","e":""},{"s":"曲目 9","c":"慣用語","en":"put one's foot in one's mouth","zh":"說錯話","n":"","e":""},{"s":"曲目 9","c":"慣用語","en":"end up","zh":"結果是","n":"","e":""},{"s":"曲目 9","c":"慣用語","en":"rookie mistake","zh":"菜鳥會犯的錯","n":"","e":""},{"s":"曲目 9","c":"慣用語","en":"It's all Greek to me.","zh":"我完全不懂。","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"believe it or not","zh":"信不信由你","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"borrow + 物 + from + 人","zh":"向某人借某物","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"lend + 物 + to + 人","zh":"借某物給某人","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"check in","zh":"替～辦理入住登記；報到","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"be short for...","zh":"～的簡稱","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"for here","zh":"內用","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"to go","zh":"外帶","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"a little","zh":"一點點","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"all right","zh":"好吧；好的","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"at most","zh":"最多","n":"","e":""},{"s":"曲目 12","c":"重要片語","en":"in my eyes","zh":"在我眼裡","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"Come on in.","zh":"快請進。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"Here you are.","zh":"給你。","n":"= Here you go.","e":""},{"s":"曲目 12","c":"生活常用語","en":"I get it.","zh":"我懂了。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"My treat.","zh":"我請客。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"Of course (not).","zh":"當然（不）。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"Thanks for your help.","zh":"謝謝你的幫忙。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"That's a lot of work.","zh":"那需要很多工作。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"That's sweet of you.","zh":"你真貼心。","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"What can I do for you?","zh":"我可以為你做什麼？","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"What's up?","zh":"怎麼了？","n":"","e":""},{"s":"曲目 12","c":"生活常用語","en":"Which do you want?","zh":"你要哪一個？","n":"","e":""},{"s":"曲目 12","c":"慣用語","en":"give me a hand","zh":"幫我一個忙","n":"","e":""},{"s":"曲目 12","c":"慣用語","en":"cut corners","zh":"貪便宜；走捷徑","n":"","e":""},{"s":"曲目 12","c":"慣用語","en":"Break a leg.","zh":"祝你好運。","n":"特別用在表演、比賽或考試前","e":""},{"s":"曲目 12","c":"慣用語","en":"My bad.","zh":"我的錯。","n":"","e":""},{"s":"曲目 12","c":"慣用語","en":"I've got a lot on my plate.","zh":"我很忙。／我分身乏術。","n":"= I have my hands full.　= I'm tied up.　= I'm up to my neck.","e":""},{"s":"曲目 15","c":"重要片語","en":"check it out","zh":"一探究竟","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"fall in love","zh":"墜入情網","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"get hurt","zh":"受傷","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"get together","zh":"團聚","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"make money","zh":"賺錢","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"row a boat","zh":"划船","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"set the table","zh":"擺碗盤","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"take out","zh":"拿出去","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"wash away","zh":"洗掉；沖走","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"for example","zh":"例如","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"a few","zh":"幾個；一些","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"little by little","zh":"一點一點地；逐漸地","n":"","e":""},{"s":"曲目 15","c":"重要片語","en":"in other words","zh":"換句話說","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"Come on!","zh":"拜託！；快點！；少來了！","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"Hard work pays off.","zh":"努力就會有收穫。","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"Let's get our hands dirty!","zh":"讓我們親自動手！","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"That's a lot of work.","zh":"那需要很多工作。","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"You can say that again.","zh":"一點也沒錯。","n":"","e":""},{"s":"曲目 15","c":"生活美語","en":"You rock!","zh":"你（們）超強的！","n":"","e":""},{"s":"曲目 15","c":"慣用語","en":"Many hands make light work.","zh":"人多好辦事。","n":"","e":""},{"s":"曲目 15","c":"慣用語","en":"Let's get the ball rolling!","zh":"讓我們開始做吧！","n":"","e":""}];
-const PHCATS=[...new Set(PHRASE.map(p=>p.c))], PHSETS=[...new Set(PHRASE.map(p=>p.s))];
+const PHCATS=[...new Set(PHRASE.map(p=>p.c))];
 let phCat="all", phSet="all", phHide=false, PHQ=null;
-function phPool(){return PHRASE.filter(p=>(phCat==="all"||p.c===phCat)&&(phSet==="all"||p.s===phSet));}
+function phPool(){
+  const arr=PHRASE.filter(p=>phCat==="all"||p.c===phCat);
+  return arr.slice().sort((a,b)=>PHCATS.indexOf(a.c)-PHCATS.indexOf(b.c)); /* 依分類分組, 不再按曲目 */
+}
 /* 唸出來時把「+ 物 + 人」「...」「（）」這些課本記號拿掉, 不然 TTS 會念成亂七八糟 */
 function phSay(t){return String(t).replace(/[\u4e00-\u9fff（）～]/g," ").replace(/\.{3}/g," ").replace(/\+/g," ").replace(/\s+/g," ").trim();}
 function phEg(t){return esc(t).split("｜").join("<br>");}
@@ -2737,9 +2742,6 @@ function renderPhraseChips(){
   cb.innerHTML="";
   mk(cb,phCat,"all","全部分類（"+PHRASE.length+"）",v=>phCat=v);
   PHCATS.forEach(c=>mk(cb,phCat,c,c+"（"+PHRASE.filter(p=>p.c===c).length+"）",v=>phCat=v));
-  const sb=$("#phSetChips"); sb.innerHTML="";
-  mk(sb,phSet,"all","全部曲目",v=>phSet=v);
-  PHSETS.forEach(s=>mk(sb,phSet,s,s+"（"+PHRASE.filter(p=>p.s===s).length+"）",v=>phSet=v));
   if(PHQ)phQuit();
   const qb=$("#phQuizBtn"); if(qb){qb.textContent="📝 開始測驗（"+phPool().length+"）";qb.onclick=()=>phStart();}
   const tg=$("#phToggle"); if(tg){tg.textContent=phHide?"👁 顯示中文":"🙈 遮住中文";
@@ -2755,9 +2757,9 @@ function renderPhrase(){
   if(!arr.length){box.innerHTML='<p class="stat">此範圍沒有資料。</p>';return;}
   let html="",last="";
   arr.forEach((p,i)=>{
-    const head=p.s+"　"+p.c;
+    const head=p.c;
     if(head!==last){html+=`<div class="phead">${esc(head)}</div>`;last=head;}
-    html+=`<div class="phr" data-i="${i}"><span class="src">${esc(p.s)}</span><span class="topic">${esc(p.c)}</span>`
+    html+=`<div class="phr" data-i="${i}"><span class="topic">${esc(p.c)}</span>`
       +`<div class="en">${esc(p.en)} 🔊</div>`
       +`<div class="zh${phHide?" hz":""}">${esc(p.zh)}</div>`
       +(p.n?`<div class="note">${esc(p.n)}</div>`:"")
@@ -2845,16 +2847,16 @@ function phFinish(){
 /* ---- 片語題目（課本即時通） ---- */
 const PEXAM=[{"topic":"曲目 6","src":"複習講義","rate":null,"q":"Excuse me, can I ___ at this plate? It is so beautiful.","opts":["take a walk","take a look","talk about","share"],"ans":1,"exp":"我可以「看一下」（take a look at）這個盤子嗎？(A) 散步 (B) 看一下 (C) 談論 (D) 分享。"},{"topic":"曲目 6","src":"複習講義","rate":null,"q":"I'm ___ the picture I found in my math book. I think it was when I was two years old.","opts":["looking at","looking over","looking for","looking up"],"ans":0,"exp":"我正在看（look at）這張照片。(A) 看著 (B) 俯視 (C) 尋找 (D) 查閱。"},{"topic":"曲目 6","src":"複習講義","rate":null,"q":"Edward: ___ There is a car coming.<br>Billy: Oh! Thank you for warning（警告）me.","opts":["Watch out!","Don't talk!","Be quiet!","No sweat!"],"ans":0,"exp":"注意（Watch out）！有部車來了。(B) 別說話！(C) 安靜！(D) 一點也不費力！"},{"topic":"曲目 6","src":"複習講義","rate":null,"q":"David: Amy, can you wake up Tony for me tomorrow morning?<br>Amy: Well, I need to sleep on it. You know, it's hard to pull him out of the bed.<br><br>What does Amy mean by saying “I need to sleep on it”?","opts":["She needs more sleep.","She needs some time to think about it.","She may sleep late tomorrow morning.","She thinks it's not easy for her to get up earlier than Tony."],"ans":1,"exp":"sleep on it 指「再考慮；再想想」，故選 (B)。誘答分析：切勿僅從字面意思來答題，否則容易誤選與「睡覺」相關的選項。"},{"topic":"曲目 9","src":"複習講義","rate":null,"q":"The doctor ___ into saving the poor girl.","opts":["took out","made trouble","put his all","took over"],"ans":2,"exp":"醫生盡全力（put one's all into）救那位可憐的女孩。(A) 拿出 (B) 製造麻煩 (C) 全力以赴 (D) 接管。"},{"topic":"曲目 9","src":"複習講義","rate":null,"q":"Jenny's new haircut（剪髮）makes her ___ from her friends because it fits her so much.","opts":["stand out","look up","cry out","fall in love"],"ans":0,"exp":"髮型很適合她，故她在朋友中變得顯眼；stand out 表「突出；引人注目」。(B) 查閱 (C) 大聲喊叫 (D) 墜入愛河。"},{"topic":"曲目 9","src":"複習講義","rate":null,"q":"Kim enjoys ___ in her free time. Old songs help her relax（放鬆）.","opts":["going to the movies","playing baseball","flying a kite","listening to music"],"ans":3,"exp":"後面提及「老歌可幫助她放鬆」，故選聽音樂。(A) 去看電影 (B) 打棒球 (C) 放風箏 (D) 聽音樂。"},{"topic":"曲目 9","src":"複習講義","rate":null,"q":"Martin: Who made this apple pie? It tastes strange.<br>Sarah: Well, my dad made it this morning.<br>Martin: Sorry. I put my foot in my mouth.<br>Sarah: It's okay. We all say things we don't mean sometimes.<br><br>What does “I put my foot in my mouth” mean here?","opts":["I said something wrong.","I don't like anything sweet.","I forgot what I am going to say.","I told a joke to make fun of others."],"ans":0,"exp":"由 Martin 不小心批評了 Sarah 父親做的蘋果派，他應會說「我說錯話了」最符合上下文意；put one's foot in one's mouth 表「說錯話」。"},{"topic":"曲目 12","src":"複習講義","rate":null,"q":"Clerk: Do you want to eat in or take away?<br>Anna: ___, please. Can you help me put all the food in the bag?","opts":["For here","To go","My treat","All is well"],"ans":1,"exp":"由「把所有食物放進袋子」可知是外帶（to go）。(A) 內用 (C) 我請客 (D) 一切都好。"},{"topic":"曲目 12","src":"複習講義","rate":null,"q":"Mom: I already helped you clean the desk.<br>Edward: ___, Mom.","opts":["Thanks for everything","My treat","May I help you","What's up"],"ans":0,"exp":"媽媽幫忙整理好書桌，Edward 應表示感謝。(A) 謝謝您所做的一切 (B) 我請客 (C) 我可以幫您嗎 (D) 怎麼了。"},{"topic":"曲目 12","src":"複習講義","rate":null,"q":"Linda: We're going to watch a movie tonight. Why not join us?<br>Mary: I'd like to, but I have my hands full. I need to finish my history report first.<br><br>What does Mary mean by saying “I have my hands full”?","opts":["She's very busy.","She hurt her hands.","She carries many things in her hands.","She doesn't like movies."],"ans":0,"exp":"由 Mary 提到「要先完成歷史報告」可知她很忙；I have my hands full 表「我很忙；分身乏術」。"},{"topic":"曲目 12","src":"複習講義","rate":null,"q":"Sarah just started her new job at a café. After her first day, she told her friend, “I have a lot on my plate, but it's exciting to learn so much!”<br><br>What does Sarah most likely mean by saying “I have a lot on my plate”?","opts":["She has too much food to eat.","She is unhappy with her new job.","She feels she has many things to do.","She is worried about the food quality（品質）at the café."],"ans":2,"exp":"由 Sarah 表示她學到許多東西推知這句話指「她有許多事要做」；I have a lot on my plate 與 I have my hands full 同義。"},{"topic":"曲目 15","src":"複習講義","rate":null,"q":"Amy: Can you ___ in the kitchen? It smells!<br>Bill: I'm busy right now.<br>Amy: It'll only take a minute.<br>Bill: All right.","opts":["set the table","say that again","take out the trash","get our hands dirty"],"ans":2,"exp":"由 Amy 提到有異味，可知她問 Bill 能否把廚房的垃圾拿出去（take out the trash）。(A) 擺碗盤 (B) 再說一遍 (D) 親自動手。"},{"topic":"曲目 15","src":"複習講義","rate":null,"q":"Going camping isn't my cup of tea. ___, I have no interest in camping.","opts":["For example","In other words","Little by little","Believe it or not"],"ans":1,"exp":"「露營並不是我喜好的事情」與「我對露營不感興趣」意思相同，故選 In other words（換句話說）。(A) 例如 (C) 漸漸地 (D) 信不信由你。"},{"topic":"曲目 15","src":"複習講義","rate":null,"q":"Sandy: I don't know where to start with our report.<br>Jack: No worries! ___ We'll figure it out（明白）as we go.","opts":["You rock.","That's a lot of work.","You can say that again.","Let's get our hands dirty together."],"ans":3,"exp":"Sandy 不知道如何開始寫報告，故 Jack 應會說「讓我們一起動手完成任務」。(A) 你太棒了 (B) 這真是不容易 (C) 十分同意。"}];
 let pxShowAll=false;
-function pexPool(){return PEXAM.filter(e=>phSet==="all"||e.topic===phSet);}
+function pexPool(){return PEXAM;}
 function renderPExam(){
   const box=$("#pexamlist"); if(!box)return;
   const arr=pexPool();
   box.innerHTML=arr.map((e,i)=>`<div class="exam" data-g="${i}">
-    <span class="src">${esc(e.src)}</span><span class="topic">${esc(e.topic)}</span>
+    <span class="src">${esc(e.src)}</span>
     <div class="q">${esc(e.q).replace(/&lt;br&gt;/g,"<br>").split("___").join('<span style="color:var(--brand)">_____</span>')}</div>
     <div class="eopts">${e.opts.map((o,k)=>`<button class="eopt" data-k="${k}"><span class="k">(${"ABCD"[k]})</span>${esc(o)}</button>`).join("")}</div>
     <div class="expl"><span class="lbl">解析</span>${esc(e.exp)}</div>
-  </div>`).join("")||`<p class="stat">此曲目沒有練習題。</p>`;
+  </div>`).join("")||`<p class="stat">沒有練習題。</p>`;
   box.querySelectorAll(".exam").forEach(b=>{
     const e=arr[+b.dataset.g];
     b.querySelectorAll(".eopt").forEach(btn=>btn.onclick=()=>{
@@ -2921,12 +2923,43 @@ window.acctSync=async function(){await syncDown();renderWrong();};
 window.wExport=function(){var blob=new Blob([JSON.stringify(loadM(),null,1)],{type:'application/json'});var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download='英文錯題本.json';a.click();URL.revokeObjectURL(u);};
 window.wImport=function(){var i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=function(){var f=i.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{saveM(mergeArr(loadM(),JSON.parse(rd.result)));cloudMirror();renderWrong();}catch(e){alert('匯入失敗:'+e.message)}};rd.readAsText(f);};i.click();};
 window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;saveM([]);if(CLOUD&&loggedIn())cloudSave([]).catch(function(){});renderWrong();};
+function wBuildPool(a){
+  /* 把錯題記錄反查回原題（考古題/文法考古題/片語題目），其餘有中英對照的記錄組成中→英選擇題 */
+  var seen=new Set(), pool=[];
+  var add=function(key,q){if(seen.has(key))return;seen.add(key);pool.push(q);};
+  a.forEach(function(r){
+    if(r.mode==="文法考古題"){
+      var g=GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.src===r.pos&&x.topic===r.zh;})
+          ||GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.src===r.pos;})
+          ||GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.topic===r.zh;});
+      if(g)add("g|"+g.q.slice(0,60),{q:g.q,opts:g.opts,ans:g.ans,src:g.src,label:g.topic,say:g.opts[g.ans],exp:g.exp||"",tip:g.tip||"",mode:"文法考古題"});
+    }else if(r.mode==="考古題"){
+      var v=VOCAB.find(function(x){return x.en===r.en&&x.exam;});
+      if(v)add("e|"+v.en,{q:v.exam.q,opts:v.exam.opts,ans:v.exam.ans,src:v.exam.src,label:v.lesson,say:v.en,exp:"",tip:"",mode:"考古題"});
+    }else if(r.mode==="片語題目"){
+      var p=PEXAM.find(function(x){return x.opts[x.ans]===r.en;});
+      if(p)add("p|"+p.q.slice(0,60),{q:p.q,opts:p.opts,ans:p.ans,src:p.src,label:"片語題目",say:p.opts[p.ans],exp:p.exp||"",tip:"",mode:"片語題目"});
+    }else if(r.en&&r.zh){
+      var isPh=r.mode==="片語會話";
+      var srcArr=isPh?PHRASE:VOCAB;
+      var kind=isPh?"片語會話":r.mode==="verb"?"動詞三態":String(r.mode).indexOf("poly")===0?"一字多義":"單字";
+      var others=shuffle(srcArr.filter(function(x){return x.en!==r.en&&x.zh!==r.zh;})).slice(0,3);
+      if(others.length<3)return;
+      var opts=shuffle([r.en].concat(others.map(function(x){return x.en;})));
+      add("w|"+kind+"|"+r.en,{q:"「"+r.zh+"」的英文是？"+(r.pos&&!isPh?"　（"+r.pos+"）":""),opts:opts,ans:opts.indexOf(r.en),src:"錯題本",label:kind,say:r.en,exp:"",tip:"",mode:r.mode,zh:r.zh});
+    }
+  });
+  return pool;
+}
 function renderWrong(){
   var host=$("#wrong"); if(!host)return;
+  if(XQ&&XQ.kind==="wrong")return; /* 重測進行中不重繪 */
   var a=loadM();
-  var h=acctHTML();
+  var h='<div id="wQuizBox"></div><div id="wwrap">'+acctHTML();
   h+='<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><div class="stat">共 '+a.length+' 筆錯題</div><div class="abtns"><button class="btn ghost sm" onclick="wExport()">⬇匯出</button><button class="btn ghost sm" onclick="wImport()">⬆匯入</button><button class="btn ghost sm" onclick="wClear()">🗑清空</button></div></div>';
-  if(!a.length){host.innerHTML=h+'<p class="stat" style="margin-top:24px">還沒有錯題。去測驗吧!答錯的會自動收進這裡 📚</p>';return;}
+  if(!a.length){host.innerHTML=h+'<p class="stat" style="margin-top:24px">還沒有錯題。去測驗吧!答錯的會自動收進這裡 📚</p></div>';return;}
+  var pool=wBuildPool(a);
+  if(pool.length)h+='<div class="row" style="margin-top:8px"><button class="btn primary sm" id="wQuizBtn">📝 重測錯題（'+pool.length+' 題）</button></div>';
   var groups={};a.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
   var rounds=Object.keys(groups).sort().reverse();
   rounds.forEach(function(rd){
@@ -2935,7 +2968,10 @@ function renderWrong(){
     h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(r.mode||'')+'</span></div></div></div></div>';}).join('');
     h+='</div>';
   });
+  h+='</div>';
   host.innerHTML=h;
+  var qb=$("#wQuizBtn");
+  if(qb)qb.onclick=function(){newRound();xqStart("wrong",wBuildPool(loadM()));};
 }
 loadSession(); renderWrong(); if(CLOUD&&loggedIn())syncDown().then(renderWrong).catch(function(){});
 
