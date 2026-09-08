@@ -2979,13 +2979,13 @@ function wBuildPool(a){
       var g=GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.src===r.pos&&x.topic===r.zh;})
           ||GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.src===r.pos;})
           ||GEXAM.find(function(x){return x.opts[x.ans]===r.en&&x.topic===r.zh;});
-      if(g)add("g|"+g.q.slice(0,60),{q:g.q,opts:g.opts,ans:g.ans,src:g.src,label:g.topic,say:g.opts[g.ans],exp:g.exp||"",tip:g.tip||"",mode:"文法考古題"});
+      if(g)add("g|"+g.q.slice(0,60),{q:g.q,opts:g.opts,ans:g.ans,src:g.src,label:g.topic,say:g.opts[g.ans],exp:g.exp||"",tip:g.tip||"",mode:"文法考古題",cat:"文法考古題"});
     }else if(r.mode==="考古題"){
       var v=VOCAB.find(function(x){return x.en===r.en&&x.exam;});
-      if(v)add("e|"+v.en,{q:v.exam.q,opts:v.exam.opts,ans:v.exam.ans,src:v.exam.src,label:v.lesson,say:v.en,exp:"",tip:"",mode:"考古題"});
+      if(v)add("e|"+v.en,{q:v.exam.q,opts:v.exam.opts,ans:v.exam.ans,src:v.exam.src,label:v.lesson,say:v.en,exp:"",tip:"",mode:"考古題",cat:"考古題"});
     }else if(r.mode==="片語題目"){
       var p=PEXAM.find(function(x){return x.opts[x.ans]===r.en;});
-      if(p)add("p|"+p.q.slice(0,60),{q:p.q,opts:p.opts,ans:p.ans,src:p.src,label:"片語題目",say:p.opts[p.ans],exp:p.exp||"",tip:"",mode:"片語題目"});
+      if(p)add("p|"+p.q.slice(0,60),{q:p.q,opts:p.opts,ans:p.ans,src:p.src,label:"片語題目",say:p.opts[p.ans],exp:p.exp||"",tip:"",mode:"片語題目",cat:"片語題目"});
     }else if(r.en&&r.zh){
       var isPh=r.mode==="片語會話";
       var srcArr=isPh?PHRASE:VOCAB;
@@ -2993,11 +2993,18 @@ function wBuildPool(a){
       var others=shuffle(srcArr.filter(function(x){return x.en!==r.en&&x.zh!==r.zh;})).slice(0,3);
       if(others.length<3)return;
       var opts=shuffle([r.en].concat(others.map(function(x){return x.en;})));
-      add("w|"+kind+"|"+r.en,{q:"「"+r.zh+"」的英文是？"+(r.pos&&!isPh?"　（"+r.pos+"）":""),opts:opts,ans:opts.indexOf(r.en),src:"錯題本",label:kind,say:r.en,exp:"",tip:"",mode:r.mode,zh:r.zh});
+      add("w|"+kind+"|"+r.en,{q:"「"+r.zh+"」的英文是？"+(r.pos&&!isPh?"　（"+r.pos+"）":""),opts:opts,ans:opts.indexOf(r.en),src:"錯題本",label:kind,say:r.en,exp:"",tip:"",mode:r.mode,zh:r.zh,cat:kind==="單字"?"單字測驗":kind});
     }
   });
   return pool;
 }
+var wSel=new Set(); /* 錯題本題型篩選（空＝全部） */
+var W_ORDER=["單字測驗","考古題","文法考古題","動詞三態","一字多義","片語會話","片語題目"];
+function wCatOf(m){m=String(m||"");
+  if(m==="文法考古題"||m==="考古題"||m==="片語題目"||m==="片語會話")return m;
+  if(m==="verb")return "動詞三態";
+  if(m.indexOf("poly")===0)return "一字多義";
+  return "單字測驗";}
 function renderWrong(){
   var host=$("#wrong"); if(!host)return;
   if(XQ&&XQ.kind==="wrong")return; /* 重測進行中不重繪 */
@@ -3006,19 +3013,38 @@ function renderWrong(){
   h+='<div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><div class="stat">共 '+a.length+' 筆錯題</div><div class="abtns"><button class="btn ghost sm" onclick="wExport()">⬇匯出</button><button class="btn ghost sm" onclick="wImport()">⬆匯入</button><button class="btn ghost sm" onclick="wClear()">🗑清空</button></div></div>';
   if(!a.length){host.innerHTML=h+'<p class="stat" style="margin-top:24px">還沒有錯題。去測驗吧!答錯的會自動收進這裡 📚</p></div>';return;}
   var pool=wBuildPool(a);
-  if(pool.length)h+='<div class="row" style="margin-top:8px"><button class="btn primary sm" id="wQuizBtn">📝 重測錯題（'+pool.length+' 題）</button></div>';
-  var groups={};a.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
+  var cats={};pool.forEach(function(q){cats[q.cat]=(cats[q.cat]||0)+1;});
+  wSel=new Set(Array.from(wSel).filter(function(c){return cats[c];}));
+  var fpool=wSel.size?pool.filter(function(q){return wSel.has(q.cat);}):pool;
+  if(pool.length){
+    h+='<div class="row" style="margin-top:8px" id="wCatRow"></div>';
+    h+='<div class="row"><button class="btn primary sm" id="wQuizBtn">📝 重測錯題（'+fpool.length+' 題）</button></div>';
+  }
+  var recs=wSel.size?a.filter(function(r){return wSel.has(wCatOf(r.mode));}):a;
+  var groups={};recs.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
   var rounds=Object.keys(groups).sort().reverse();
   rounds.forEach(function(rd){
     var items=groups[rd];
     h+='<div style="margin-top:14px"><div class="stat">🕒 '+esc(new Date(rd).toLocaleString())+'（'+items.length+' 題）</div>';
-    h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(r.mode||'')+'</span></div></div></div></div>';}).join('');
+    h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(wCatOf(r.mode))+'</span></div></div></div></div>';}).join('');
     h+='</div>';
   });
   h+='</div>';
   host.innerHTML=h;
+  var crow=$("#wCatRow");
+  if(crow){
+    var mkc=function(active,label,fn){var b=document.createElement("button");
+      b.className="chip"+(active?" active":"");b.textContent=label;
+      b.onclick=function(){fn();renderWrong();};crow.appendChild(b);};
+    mkc(wSel.size===0,"全部（"+pool.length+" 題）",function(){wSel.clear();});
+    W_ORDER.forEach(function(c){if(!cats[c])return;
+      mkc(wSel.has(c),c+"（"+cats[c]+"）",function(){if(wSel.has(c))wSel.delete(c);else wSel.add(c);});});
+  }
   var qb=$("#wQuizBtn");
-  if(qb)qb.onclick=function(){newRound();xqStart("wrong",wBuildPool(loadM()));};
+  if(qb)qb.onclick=function(){newRound();
+    var p=wBuildPool(loadM());
+    if(wSel.size)p=p.filter(function(q){return wSel.has(q.cat);});
+    xqStart("wrong",p);};
 }
 loadSession(); renderWrong(); if(CLOUD&&loggedIn())syncDown().then(renderWrong).catch(function(){});
 
