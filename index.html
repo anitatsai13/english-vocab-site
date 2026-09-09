@@ -195,6 +195,20 @@
   .acct .btn.brand,.abtns .btn.brand{background:var(--brand);color:#fff}
   .abtns .btn.ghost{background:#e8e8ed}
   .amsg{font-size:.85rem;margin-top:4px} .amsg.bad{color:var(--bad)} .amsg.ok{color:var(--ok)}
+  /* ===== 搜尋 ===== */
+  .searchbar{margin:10px 0 0}
+  .searchbar input{width:100%;box-sizing:border-box;padding:10px 14px;border:1.5px solid var(--line);
+    border-radius:12px;font-size:.95rem;background:var(--card);color:var(--ink)}
+  .searchbar input:focus{outline:none;border-color:var(--brand)}
+  #sout{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:6px 12px;margin:8px 0}
+  .snote{font-size:.82rem;color:var(--muted);margin:7px 0 3px;font-weight:700}
+  .sq{border-bottom:1px solid var(--line);padding:8px 4px}
+  .sq:last-of-type{border-bottom:none}
+  .sq summary{cursor:pointer;font-size:.93rem;line-height:1.5}
+  .sq summary b{color:var(--brand-d)}
+  .sq .sqa{margin:6px 0 2px;font-size:.9rem;line-height:1.6}
+  .tagb{display:inline-block;background:#eaf3ff;color:var(--brand-d);border-radius:6px;padding:1px 7px;font-size:.78rem;margin-left:6px}
+  .sspk{border:none;background:#eaf3ff;color:var(--brand-d);border-radius:8px;padding:2px 10px;cursor:pointer;font-size:.85rem}
 </style>
 </head>
 <body>
@@ -204,6 +218,8 @@
 </header>
 
 <div class="wrap">
+  <div class="searchbar"><input id="sbox" type="search" placeholder="🔍 搜尋單字、中文、片語、例句…"></div>
+  <div id="sout" hidden></div>
   <div class="row" id="groupSel" style="margin:6px 0 2px"></div>
   <div class="tabs">
     <button class="tab active" data-tab="learn">🧠 學習卡</button>
@@ -3277,6 +3293,36 @@ async function cloudLoadPins(){if(!await authOK())return null;const j=await sb('
 async function cloudSavePins(arr){if(!await authOK())return;await sb('/rest/v1/mistakes?on_conflict=user_id,app',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:SESSION.user.id,app:'english_pin',data:arr,updated_at:new Date().toISOString()})});}
 function cloudMirrorPins(){if(CLOUD&&loggedIn())cloudSavePins([...PINS]).catch(()=>{})}
 async function syncDownPins(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoadPins();(cloud||[]).forEach(function(e){PINS.add(e);});localStorage.setItem(PKEY,JSON.stringify([...PINS]));await cloudSavePins([...PINS]);}catch(e){}}
+
+/* ===== 搜尋 ===== */
+function sEsc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function sWordHtml(v){
+  const gname=(GROUPS[v.group]||{name:v.group}).name;
+  let body='<div class="sqa"><button class="sspk" data-say="'+sEsc(v.en)+'">🔊 發音</button></div>';
+  if(v.tip)body+='<div class="sqa">💡 '+sEsc(v.tip)+'</div>';
+  if(v.ex&&v.ex.en)body+='<div class="sqa">'+sEsc(v.ex.en)+'<br>'+sEsc(v.ex.zh||"")+'</div>';
+  if(v.def)body+='<div class="sqa">'+sEsc(v.def)+'</div>';
+  return '<details class="sq"><summary><b>'+sEsc(v.en)+'</b>　'+sEsc(v.pos||"")+'　'+sEsc(v.zh)+'<span class="tagb">'+sEsc(gname)+'・'+sEsc(v.lesson||"")+'</span></summary>'+body+'</details>';
+}
+function sPolyHtml(p){
+  const body=p.senses.map(s=>'<div class="sqa">・('+sEsc(s.p)+') '+sEsc(s.zh)+'：'+sEsc(s.ex)+'　'+sEsc(s.t||"")+'</div>').join("");
+  return '<details class="sq"><summary><b>'+sEsc(p.en)+'</b>　'+p.senses.map(s=>sEsc(s.zh)).join("／")+'<span class="tagb">一字多義</span></summary>'+body+'</details>';
+}
+function runSearch(){
+  const v=$("#sbox").value.trim().toLowerCase(), out=$("#sout");
+  if(!v){out.hidden=true;out.innerHTML="";return;}
+  const terms=v.split(/\s+/).filter(Boolean), hit=t=>terms.every(x=>t.includes(x));
+  const words=VOCAB.filter(w=>hit((w.en+" "+w.zh+" "+(w.tip||"")+" "+(w.def||"")+" "+(w.ex?w.ex.en+" "+(w.ex.zh||""):"")).toLowerCase())).slice(0,20);
+  const polys=POLY.filter(p=>hit((p.en+" "+p.senses.map(s=>s.zh+" "+s.ex+" "+(s.t||"")).join(" ")).toLowerCase())).slice(0,8);
+  let h="";
+  if(words.length)h+='<div class="snote">📋 單字／片語（點擊展開）</div>'+words.map(sWordHtml).join("");
+  if(polys.length)h+='<div class="snote">🔀 一字多義</div>'+polys.map(sPolyHtml).join("");
+  if(!h)h='<div class="snote">找不到「'+sEsc(v)+'」相關內容</div>';
+  out.innerHTML=h;out.hidden=false;
+  out.querySelectorAll(".sspk").forEach(b=>b.onclick=()=>speak(b.dataset.say));
+}
+let sTimer=null;
+$("#sbox").addEventListener("input",()=>{clearTimeout(sTimer);sTimer=setTimeout(runSearch,200);});
 
 /* init */
 renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
