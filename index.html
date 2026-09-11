@@ -3049,7 +3049,14 @@ function phBuild(p){
 function phStart(only){
   const pool=only||phPool();
   if(pool.length<4){alert("此範圍題數不足 4 條，無法出題。");return;}
-  PHQ={list:shuffle(pool).map(phBuild),i:0,score:0,wrong:[]};
+  let list=shuffle(pool).map(phBuild);
+  if(!only&&typeof PEXAM!=="undefined"&&PEXAM.length){
+    /* 片語題目（課本選擇題）一併混入練習 */
+    const exQ=PEXAM.map(e=>({p:{s:e.src||"片語題目",c:"選擇題",en:e.opts[e.ans],zh:"",n:e.exp||"",e:null},
+      q:String(e.q).replace(/<br\s*\/?>/gi,"　"),opts:e.opts.slice(),ans:e.ans,exam:true}));
+    list=shuffle(list.concat(exQ));
+  }
+  PHQ={list:list,i:0,score:0,wrong:[]};
   $("#phlist").style.display="none";$("#phQuizBtn").style.display="none";$("#phToggle").style.display="none";
   phRender();
 }
@@ -3065,7 +3072,7 @@ function phRender(){
   let s=`<div class="progress"><i style="width:${PHQ.i/n*100}%"></i></div>`;
   s+=`<div class="counter" style="text-align:center;margin-bottom:8px">第 ${PHQ.i+1} / ${n} 題　|　得分 ${PHQ.score}</div>`;
   s+=`<div class="exam"><span class="src">${esc(q.p.s)}</span><span class="topic">${esc(q.p.c)}</span>`;
-  s+=`<div class="q">${esc(q.q)}<span style="color:var(--muted);font-weight:700;font-size:.85rem">　${q.e2c?"→ 選中文意思":"→ 選英文說法"}</span></div>`;
+  s+=`<div class="q">${esc(q.q)}<span style="color:var(--muted);font-weight:700;font-size:.85rem">　${q.exam?"→ 選擇題":q.e2c?"→ 選中文意思":"→ 選英文說法"}</span></div>`;
   s+=`<div class="eopts">${q.opts.map((o,k)=>`<button class="eopt" data-k="${k}"><span class="k">(${"ABCD"[k]})</span>${esc(o)}</button>`).join("")}</div>`;
   s+='<div class="expl"></div></div>';
   s+='<div class="nav"><button class="btn ghost sm" id="phquit">結束</button><button class="btn primary" id="phnext" style="display:none">下一題 ▶</button></div>';
@@ -3081,7 +3088,10 @@ function phChoose(box,btn,q){
   if(!ok)btn.classList.add("wrong");
   if(ok)PHQ.score++;else PHQ.wrong.push(q.p);
   speak(phSay(q.p.en));
-  if(!ok)logMistake({mode:"片語會話",en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
+  if(!ok){
+    if(q.exam)logMistake({mode:"片語題目",en:q.p.en,zh:"片語題目",pos:q.p.s,group:activeGroup,correct:q.p.en});
+    else logMistake({mode:"片語會話",en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
+  }
   const e=box.querySelector(".expl");
   let t=`<span class="lbl">${ok?"✅ 答對了":"❌ 正解"}</span>${esc(q.p.en)}　${esc(q.p.zh)}`;
   if(q.p.n)t+=`<div style="margin-top:6px">${esc(q.p.n)}</div>`;
