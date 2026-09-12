@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>國中英文單字學習網</title>
+<title>英文單字學習網</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0071e3">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -219,7 +219,7 @@
 </head>
 <body>
 <header>
-  <h1>📚 國中英文單字學習網</h1>
+  <h1>📚 英文單字學習網</h1>
   <p>多版本單字 ・ 共 <span id="total"></span> 字 ・ 訣竅 + 例句 + 測驗 + 考古題</p>
 </header>
 
@@ -1984,15 +1984,30 @@ function renderQuizChips(){
   mk("pin","📌 不熟("+pinCount()+")", qPin, "var(--l5)");
 }
 function renderExamChips(){chipRow($("#examChips"),eScope,u=>{eScope=u;renderExamChips();renderExam();});}
+const EASON_SUBS=["eason","wonderskills"]; /* 收進「EASON」母分組的課程 */
+let easonLast="eason";
 function renderGroupSel(){
   const c=$("#groupSel");c.innerHTML="";
-  Object.keys(GROUPS).forEach(k=>{const b=document.createElement("button");b.className="chip"+(activeGroup===k?" active":"");
-    b.style.fontWeight="800";b.textContent=GROUPS[k].name;
-    if(activeGroup===k){b.style.borderColor="var(--brand)";b.style.color="var(--brand)";b.style.background="#e8f1ff";}
-    b.onclick=()=>{if(activeGroup===k)return;activeGroup=k;learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;
-      renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
-      updateTotal();buildDeck();renderList();showBest();renderExam();};
-    c.appendChild(b);});
+  const go=k=>{if(activeGroup===k)return;activeGroup=k;if(EASON_SUBS.includes(k))easonLast=k;
+    learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;
+    renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
+    updateTotal();buildDeck();renderList();showBest();renderExam();};
+  const mk=(parent,label,active,fn)=>{const b=document.createElement("button");b.className="chip"+(active?" active":"");
+    b.style.fontWeight="800";b.textContent=label;
+    if(active){b.style.borderColor="var(--brand)";b.style.color="var(--brand)";b.style.background="#e8f1ff";}
+    b.onclick=fn;parent.appendChild(b);};
+  Object.keys(GROUPS).forEach(k=>{
+    if(EASON_SUBS.includes(k)){
+      if(k===EASON_SUBS[0])mk(c,"EASON",EASON_SUBS.includes(activeGroup),()=>{if(!EASON_SUBS.includes(activeGroup))go(easonLast);});
+      return;
+    }
+    mk(c,GROUPS[k].name,activeGroup===k,()=>go(k));
+  });
+  if(EASON_SUBS.includes(activeGroup)){
+    const sub=document.createElement("div");sub.className="row";sub.style.cssText="width:100%;margin:2px 0 0;justify-content:center";
+    EASON_SUBS.forEach(k=>mk(sub,GROUPS[k].name.replace(/^Eason・/,""),activeGroup===k,()=>go(k)));
+    c.appendChild(sub);
+  }
 }
 
 /* ---------- LIST ---------- */
