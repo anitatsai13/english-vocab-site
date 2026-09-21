@@ -272,6 +272,7 @@
   <!-- LIST -->
   <section class="panel" id="list">
     <div class="row" id="listChips"></div>
+    <div class="row" id="selBar" style="gap:6px;align-items:center;margin-top:2px"></div>
     <div class="listview" id="listview"></div>
   </section>
 
@@ -1885,9 +1886,19 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const sample=(arr,n)=>shuffle(arr).slice(0,n);
-function speak(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u);}catch(e){}}
+function speak(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=((String(text).trim().match(/ +/g)||[]).length>=2?.6:.85);speechSynthesis.speak(u);}catch(e){}}
 window.speak=speak;
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+/* ---------- 單字個別挑選（跨課、可持久化） ---------- */
+const SEL_KEY="sel_words";
+let SELW=new Set(LS.get(SEL_KEY,[]));
+let qSelW=false;
+function wkey(v){return v.group+"|"+v.en;}
+function isSel(v){return SELW.has(wkey(v));}
+function setSel(v,on){const k=wkey(v);if(on)SELW.add(k);else SELW.delete(k);}
+function saveSel(){LS.set(SEL_KEY,[...SELW]);}
+function selCount(){return SELW.size;}
+function selectedWords(){return VOCAB.filter(v=>SELW.has(wkey(v)));}
 const LCOLOR={L1:'var(--l1)',L2:'var(--l2)',L3:'var(--l3)',L4:'var(--l4)',L5:'var(--l5)',L6:'var(--l6)'};
 const EMOJI={
  "dress":"👗","on sale":"🏷️","shirt":"👕","shorts":"🩳","jeans":"👖","sweater":"🧶","jacket":"🧥","skirt":"👚","ring":"💍","sock":"🧦","cap":"🧢","tie":"👔","belt":"🥋","pants":"👖","wallet":"👛","a pair of":"👟","glove":"🧤","try on":"🪞","take off":"🔽","be full of":"🈵","fashionable":"💃","as... as...":"⚖️","than":"📊","already":"✅","fashion":"👠","medium":"Ⓜ️","fitting room":"🚪","agree":"👍","comfortable":"😌","light":"🪶","recycle":"♻️","planet":"🪐","business":"💼","customer":"🛍️","actually":"🤔","owner":"🔑","item":"📋","fresh":"🥬","mean":"💬","Earth":"🌍","turn into":"🔄",
@@ -1968,11 +1979,12 @@ function renderListChips(){chipRow($("#listChips"),listScope,u=>{listScope=u;ren
 function renderQuizChips(){
   const box=$("#quizChips"); box.innerHTML="";
   const units=GROUPS[activeGroup].units;
-  function onQ(u){ if(u==="all"){qSel.clear();qPin=false;} else if(u==="pin"){qPin=true;qSel.clear();} else {qPin=false; if(qSel.has(u))qSel.delete(u); else qSel.add(u);} renderQuizChips(); showBest(); }
+  function onQ(u){ if(u==="all"){qSel.clear();qPin=false;qSelW=false;} else if(u==="pin"){qPin=true;qSel.clear();qSelW=false;} else if(u==="selw"){qSelW=!qSelW;if(qSelW){qPin=false;qSel.clear();}} else {qPin=false;qSelW=false; if(qSel.has(u))qSel.delete(u); else qSel.add(u);} renderQuizChips(); showBest(); }
   const mk=(u,label,active,color)=>{const b=document.createElement("button");b.className="chip"+(active?" active":"");b.textContent=label; if(active&&color){b.style.borderColor=color;b.style.color=color;} b.onclick=()=>onQ(u); box.appendChild(b);};
-  mk("all","全部", qSel.size===0&&!qPin, null);
-  units.forEach(u=>mk(u,u, !qPin&&qSel.has(u), ucolor(u)));
+  mk("all","全部", qSel.size===0&&!qPin&&!qSelW, null);
+  units.forEach(u=>mk(u,u, !qPin&&!qSelW&&qSel.has(u), ucolor(u)));
   mk("pin","📌 不熟("+pinCount()+")", qPin, "var(--l5)");
+  mk("selw","✅ 已選("+selCount()+")", qSelW, "var(--l5)");
 }
 function renderExamChips(){chipRow($("#examChips"),eScope,u=>{eScope=u;renderExamChips();renderExam();});}
 const EASON_SUBS=["eason","wonderskills"]; /* 收進「EASON」母分組的課程 */
@@ -1980,7 +1992,7 @@ let easonLast="eason";
 function renderGroupSel(){
   const c=$("#groupSel");c.innerHTML="";
   const go=k=>{if(activeGroup===k)return;activeGroup=k;if(EASON_SUBS.includes(k))easonLast=k;
-    learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;
+    learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;qSelW=false;
     renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
     updateTotal();buildDeck();renderList();showBest();renderExam();};
   const mk=(parent,label,active,fn)=>{const b=document.createElement("button");b.className="chip"+(active?" active":"");
@@ -2003,29 +2015,52 @@ function renderGroupSel(){
 
 /* ---------- LIST ---------- */
 let listScope="all";
+var curList=[];
+function renderSelBar(){
+  const box=$("#selBar"); if(!box)return;
+  const inView=curList.filter(v=>isSel(v)).length;
+  const allOn=curList.length>0&&inView===curList.length;
+  box.innerHTML='<button class="chip" id="selAllBtn">'+(allOn?"⬜ 取消本頁":"☑️ 全選本頁")+'</button>'
+    +'<button class="chip" id="selClrBtn">🧹 清除全部</button>'
+    +'<span style="font-size:.85rem;color:var(--muted);align-self:center">本頁 '+inView+'／已選 <b style="color:var(--l5)">'+selCount()+'</b> 個</span>'
+    +'<button class="chip" id="selQuizBtn" style="border-color:var(--l5);color:var(--l5);font-weight:700">🚀 測驗已選</button>';
+  $("#selAllBtn").onclick=()=>{curList.forEach(v=>setSel(v,!allOn));saveSel();renderList();renderQuizChips();};
+  $("#selClrBtn").onclick=()=>{SELW.clear();saveSel();renderList();renderQuizChips();};
+  $("#selQuizBtn").onclick=()=>{
+    if(!selCount()){alert("尚未勾選任何單字，請先在左側方框打勾。");return;}
+    qSelW=true;qPin=false;qSel.clear();renderQuizChips();showBest();
+    const tb=document.querySelector('.tab[data-tab="quiz"]'); if(tb)tb.click();
+  };
+}
 function renderList(){
   const arr=VOCAB.filter(v=> listScope==="pin" ? isPinned(v.en) : (v.group===activeGroup&&(listScope==="all"||v.lesson===listScope)));
+  curList=arr; renderSelBar();
   $("#listview").innerHTML=arr.map(v=>`
     <div class="item">
       <div class="top">
+        <input type="checkbox" class="selbox" data-id="${v.id}" ${isSel(v)?"checked":""} title="勾選後可只測驗這些字" style="width:20px;height:20px;flex:0 0 auto;accent-color:var(--l5);cursor:pointer">
         <span class="dot" style="background:${ucolor(v.lesson)}"></span>
         <span style="font-size:1.5rem;flex:0 0 auto">${emo(v.en)}</span>
         <div><div class="w">${esc(v.en)} <span style="color:var(--muted);font-size:.8rem;font-weight:400">${esc(v.pos)}</span></div>
         <div class="m">${esc(v.zh)}</div></div>
-        <button class="sp" onclick="event.stopPropagation();speak('${esc(v.en).replace(/'/g,"\\'")}')">🔊</button>
-        <button class="sp" title="標記/取消不熟" style="${isPinned(v.en)?'background:var(--l5);color:#fff':''}" onclick="event.stopPropagation();togglePin('${esc(v.en).replace(/'/g,"\\'")}');renderList();renderListChips();">📌</button>
+        <button class="sp" onclick="event.stopPropagation();speak('${esc(v.en).replace(/'/g,"\'")}')">🔊</button>
+        <button class="sp" title="標記/取消不熟" style="${isPinned(v.en)?'background:var(--l5);color:#fff':''}" onclick="event.stopPropagation();togglePin('${esc(v.en).replace(/'/g,"\'")}');renderList();renderListChips();">📌</button>
       </div>
       <span class="toggle">▼ 訣竅 / 例句</span>
       <div class="more">
-        ${v.def?`<div class="ex2"><span class="l">📖 定義　</span>${esc(v.def)} <button class="sp" style="width:26px;height:26px;font-size:.8rem;display:inline-flex;align-items:center;justify-content:center" onclick="event.stopPropagation();speak('${esc(v.def).replace(/'/g,"\\'")}')">🔊</button></div>`:""}
+        ${v.def?`<div class="ex2"><span class="l">📖 定義　</span>${esc(v.def)} <button class="sp" style="width:26px;height:26px;font-size:.8rem;display:inline-flex;align-items:center;justify-content:center" onclick="event.stopPropagation();speak('${esc(v.def).replace(/'/g,"\'")}')">🔊</button></div>`:""}
         ${v.tip?`<div><span class="l">💡 訣竅　</span>${esc(v.tip)}</div>`:""}
-        ${v.ex?`<div class="ex2" style="margin-top:4px"><span class="l">📝 例句　</span>${esc(v.ex.en)} <button class="sp" style="width:26px;height:26px;font-size:.8rem;display:inline-flex;align-items:center;justify-content:center" onclick="event.stopPropagation();speak('${esc(v.ex.en).replace(/'/g,"\\'")}')">🔊</button><br><span class="z">${esc(v.ex.zh)}</span></div>`:""}
+        ${v.ex?`<div class="ex2" style="margin-top:4px"><span class="l">📝 例句　</span>${esc(v.ex.en)} <button class="sp" style="width:26px;height:26px;font-size:.8rem;display:inline-flex;align-items:center;justify-content:center" onclick="event.stopPropagation();speak('${esc(v.ex.en).replace(/'/g,"\'")}')">🔊</button><br><span class="z">${esc(v.ex.zh)}</span></div>`:""}
         ${v.rel?`<div style="margin-top:4px"><span class="l">🔗 衍生　</span>${esc(v.rel)}</div>`:""}
       </div>
     </div>`).join("");
   $$("#listview .item").forEach(it=>{
     const tg=it.querySelector(".toggle");
     tg.onclick=()=>{it.classList.toggle("open");tg.textContent=it.classList.contains("open")?"▲ 收合":"▼ 訣竅 / 例句";};
+  });
+  $$("#listview .selbox").forEach(cb=>{
+    cb.onclick=e=>e.stopPropagation();
+    cb.onchange=()=>{setSel(VOCAB[+cb.dataset.id],cb.checked);saveSel();renderSelBar();renderQuizChips();};
   });
 }
 /* list chips rendered by renderListChips() */
@@ -2100,13 +2135,13 @@ function makeQuestion(word,pool,type){
   return{type,word,opts:shuffle([word,...distract]),key};
 }
 $("#startquiz").onclick=()=>{
-  let scope = qPin ? VOCAB.filter(v=>isPinned(v.en)) : qSel.size ? VOCAB.filter(v=>v.group===activeGroup && qSel.has(v.lesson)) : VOCAB.filter(v=>v.group===activeGroup);
+  let scope = qSelW ? selectedWords() : qPin ? VOCAB.filter(v=>isPinned(v.en)) : qSel.size ? VOCAB.filter(v=>v.group===activeGroup && qSel.has(v.lesson)) : VOCAB.filter(v=>v.group===activeGroup);
   let qpool=(qType==="cloze")?scope.filter(v=>(v.clz&&v.clz.length&&!EASON_GROUPS.has(v.group))||clozeBlank(v)):scope;
-  if(!qpool.length){alert("目前沒有可測的單字(此範圍或釘選為空)");return;}
+  if(!qpool.length){alert("目前沒有可測的單字(此範圍／釘選／已選為空)");return;}
   let n=$("#qnum").value;n=(n==="all")?qpool.length:Math.min(+n,qpool.length);
   const picked=sample(qpool,n);
   // 誘答取材放大到整冊（釘選則全部單字），單課測驗也能挑到夠多的相似易混淆字
-  const dpool = qPin ? VOCAB : VOCAB.filter(v=>v.group===activeGroup);
+  const dpool = (qPin||qSelW) ? VOCAB : VOCAB.filter(v=>v.group===activeGroup);
   questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,dpool,t);});
   qi=0;score=0;wrong=[];
   newRound();
@@ -2234,11 +2269,11 @@ function finish(){
        <button class="btn ghost" id="backcfg">⚙ 設定</button>
      </div>${rv}</div>`;
   $("#qresult").style.display="block";
-  if(wrong.length)$("#retrywrong").onclick=()=>{const pool=qPin?VOCAB:VOCAB.filter(v=>v.group===activeGroup);questions=shuffle(wrong).map(q=>makeQuestion(q.word,pool,q.type));qi=0;score=0;wrong=[];$("#qresult").style.display="none";$("#qrun").style.display="block";renderQuestion();};
+  if(wrong.length)$("#retrywrong").onclick=()=>{const pool=(qPin||qSelW)?VOCAB:VOCAB.filter(v=>v.group===activeGroup);questions=shuffle(wrong).map(q=>makeQuestion(q.word,pool,q.type));qi=0;score=0;wrong=[];$("#qresult").style.display="none";$("#qrun").style.display="block";renderQuestion();};
   $("#retryall").onclick=()=>{$("#qresult").style.display="none";$("#startquiz").click();};
   $("#backcfg").onclick=()=>{$("#qresult").style.display="none";$("#qcfg").style.display="block";showBest();};
 }
-function qScopeKey(){return qPin?"pin":(qSel.size?[...qSel].sort().join("+"):"all");}
+function qScopeKey(){return qSelW?"selw":qPin?"pin":(qSel.size?[...qSel].sort().join("+"):"all");}
 function showBest(){const b=LS.get("best_"+activeGroup+"_"+qScopeKey(),0);$("#beststat").textContent=b?("此範圍最佳答對率： "+b+"%"):"還沒有紀錄，開始第一次測驗吧！";}
 
 /* ---------- EXAM ---------- */
