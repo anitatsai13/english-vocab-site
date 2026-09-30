@@ -205,6 +205,13 @@
   #phNum,#pexNum{padding:6px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:.85rem;font-weight:700}
   #qfbex{white-space:pre-line}
   #qfbex .fbzh{font-size:1.25rem;font-weight:800;color:var(--ink);margin-top:6px;line-height:1.5}
+  /* 片語分組學習：組別籌碼可捲動 */
+  #phGroupRow{max-height:126px;overflow-y:auto;justify-content:flex-start;gap:6px;
+    padding:6px;border:1.5px solid var(--line);border-radius:12px;background:var(--bg)}
+  #phGroupRow .chip{font-size:.78rem;padding:4px 9px}
+  #phSetInfo{flex:1;text-align:center;font-size:.8rem}
+  #phCard{margin:10px 0}
+  #phCard .detail{font-size:.95rem;line-height:1.6;text-align:left}
   /* 片語我最通：四個一組 */
   .phsethead{font-weight:900;color:var(--brand-d);margin:14px 0 4px;font-size:1.02rem}
   .phgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 8px}
@@ -340,6 +347,24 @@
   <section class="panel" id="phrase">
     <div class="row" id="phCatChips"></div>
     <p class="stat">課本整理頁：重要片語 ・ 生活常用語 ・ 慣用語 ・ 點英文可發音</p>
+    <div class="qcfg" id="phSetCfg">
+      <h3>分組學習卡／分組測驗</h3>
+      <div class="row">
+        <button class="chip active" data-phsize="4">每組 4 個</button>
+        <button class="chip" data-phsize="8">每組 8 個</button>
+      </div>
+      <div class="row" id="phGroupRow"></div>
+      <div class="row">
+        <button class="btn ghost sm" id="phPrevSet">◀ 上一組</button>
+        <span class="stat" id="phSetInfo"></span>
+        <button class="btn ghost sm" id="phNextSet">下一組 ▶</button>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="phCardBtn">🧠 本組學習卡</button>
+        <button class="btn primary" id="phSetQuizBtn">📝 測驗本組</button>
+      </div>
+    </div>
+    <div id="phCard"></div>
     <div class="row">
       <button class="btn ghost sm" id="phToggle">🙈 遮住中文</button>
       <select id="phNum" title="測驗題數">
@@ -3257,6 +3282,100 @@ function phPool(){
 /* 唸出來時把「+ 物 + 人」「...」「（）」這些課本記號拿掉, 不然 TTS 會念成亂七八糟 */
 function phSay(t){return String(t).replace(/[\u4e00-\u9fff（）～]/g," ").replace(/\.{3}/g," ").replace(/\+/g," ").replace(/\s+/g," ").trim();}
 function phEg(t){return esc(t).split("｜").join("<br>");}
+/* ===== 片語分組：4 或 8 個一組，做成學習卡＋分組測驗 ===== */
+let phSize=4, phGroup=0, PHCARD=null;
+const phBaseOf=x=>x.set||x.en.split(" ")[0];
+function phGroups(){
+  const arr=phPool(), out=[];
+  let i=0;
+  while(i<arr.length){
+    const c=arr[i].c;
+    let j=i; while(j<arr.length&&arr[j].c===c)j++;
+    const seg=arr.slice(i,j);
+    if(c==="片語我最通"){
+      /* 這類本來就是同一個動詞四個一組，先依動詞切，再依每組個數切 */
+      let k=0;
+      while(k<seg.length){
+        const base=phBaseOf(seg[k]);
+        let m=k; while(m<seg.length&&phBaseOf(seg[m])===base)m++;
+        const sub=seg.slice(k,m);
+        for(let s=0;s<sub.length;s+=phSize)out.push({cat:c,label:base,items:sub.slice(s,s+phSize)});
+        k=m;
+      }
+    }else{
+      for(let s=0;s<seg.length;s+=phSize)out.push({cat:c,label:c,items:seg.slice(s,s+phSize)});
+    }
+    i=j;
+  }
+  return out;
+}
+function renderPhSets(){
+  const gs=phGroups();
+  if(phGroup>=gs.length)phGroup=0;
+  const row=$("#phGroupRow");
+  if(row){
+    row.innerHTML="";
+    gs.forEach((g,i)=>{
+      const b=document.createElement("button");
+      b.className="chip"+(i===phGroup?" active":"");
+      const tag=(g.cat==="片語我最通")?g.label:g.items[0].en;
+      b.textContent=(i+1)+"．"+(tag.length>16?tag.slice(0,16)+"…":tag)+"（"+g.items.length+"）";
+      b.title=g.cat+"："+g.items.map(p=>p.en).join("、");
+      b.onclick=()=>{phGroup=i;renderPhSets();if(PHCARD)phCardOpen();};
+      row.appendChild(b);
+    });
+  }
+  const g=gs[phGroup];
+  const info=$("#phSetInfo");
+  if(info)info.textContent=g?("第 "+(phGroup+1)+" / "+gs.length+" 組　｜　"+g.label+"　｜　"+g.items.map(p=>p.en).join("、")):"此範圍沒有資料";
+  const qb=$("#phSetQuizBtn");
+  if(qb){qb.textContent="📝 測驗本組（"+(g?g.items.length:0)+"）";qb.onclick=()=>{if(g)phStart(g.items);};}
+  const cb2=$("#phCardBtn"); if(cb2)cb2.onclick=()=>phCardOpen();
+  const pv=$("#phPrevSet"); if(pv)pv.onclick=()=>{phGroup=(phGroup-1+gs.length)%gs.length;renderPhSets();if(PHCARD)phCardOpen();};
+  const nx=$("#phNextSet"); if(nx)nx.onclick=()=>{phGroup=(phGroup+1)%gs.length;renderPhSets();if(PHCARD)phCardOpen();};
+  document.querySelectorAll("[data-phsize]").forEach(b=>{
+    b.classList.toggle("active",+b.dataset.phsize===phSize);
+    b.onclick=()=>{phSize=+b.dataset.phsize;phGroup=0;renderPhSets();if(PHCARD)phCardOpen();};
+  });
+}
+function phCardOpen(){
+  const gs=phGroups(), g=gs[phGroup];
+  if(!g){alert("此範圍沒有資料。");return;}
+  PHCARD={items:g.items,i:0,label:g.label,no:phGroup+1,total:gs.length};
+  const l=$("#phlist"); if(l)l.style.display="none";
+  phCardRender();
+}
+function phCardClose(){
+  PHCARD=null;
+  const c=$("#phCard"); if(c)c.innerHTML="";
+  const l=$("#phlist"); if(l)l.style.display="";
+}
+function phCardRender(){
+  const c=PHCARD, p=c.items[c.i], box=$("#phCard"); if(!box)return;
+  const badge='<span class="badge">第 '+c.no+' / '+c.total+' 組　'+esc(c.label)+'</span>';
+  box.innerHTML='<div class="card-stage"><div class="flash" id="phFlash">'
+    +'<div class="face front">'+badge
+    +'<div class="en">'+esc(p.en)+'</div>'
+    +'<button class="speak" id="phFSpeak" title="發音">🔊</button>'
+    +'<div class="hint">點卡片看中文＋例句</div></div>'
+    +'<div class="face back">'+badge
+    +'<div class="zh">'+esc(p.zh)+'</div>'
+    +'<div class="detail">'+(p.n?esc(p.n):"")+(p.e?((p.n?"<br>":"")+phEg(p.e)):"")+'</div>'
+    +'<div class="hint">點卡片翻回英文</div></div>'
+    +'</div></div>'
+    +'<div class="nav"><button class="btn ghost" id="phCPrev">◀ 上一個</button>'
+    +'<span class="counter">'+(c.i+1)+' / '+c.items.length+'</span>'
+    +'<button class="btn primary" id="phCNext">下一個 ▶</button></div>'
+    +'<div class="row"><button class="btn ghost sm" id="phCClose">✖ 關閉學習卡</button>'
+    +'<button class="btn primary sm" id="phCQuiz">📝 測驗本組（'+c.items.length+'）</button></div>';
+  const fl=$("#phFlash");
+  fl.onclick=e=>{if(e.target.id==="phFSpeak")return;fl.classList.toggle("flip");};
+  $("#phFSpeak").onclick=e=>{e.stopPropagation();speak(phSay(p.en));};
+  $("#phCPrev").onclick=()=>{c.i=(c.i-1+c.items.length)%c.items.length;phCardRender();};
+  $("#phCNext").onclick=()=>{c.i=(c.i+1)%c.items.length;phCardRender();speak(phSay(c.items[c.i].en));};
+  $("#phCClose").onclick=()=>phCardClose();
+  $("#phCQuiz").onclick=()=>{const items=c.items;phCardClose();phStart(items);};
+}
 function renderPhraseChips(){
   const cb=$("#phCatChips"); if(!cb)return;
   const mk=(box,cur,val,label,set)=>{const b=document.createElement("button");
@@ -3271,6 +3390,7 @@ function renderPhraseChips(){
     tg.onclick=()=>{phHide=!phHide;renderPhraseChips();};}
   if(XQ&&XQ.kind==="pexam"&&XQ.scope!==xqScope("pexam"))xqQuit();
   const pq=$("#pexamQuizBtn"); if(pq){pq.textContent="📝 片語題目測驗（"+pexPool().length+" 題）";pq.onclick=()=>xqStart("pexam");}
+  renderPhSets();
   renderPhrase();
   renderPExam();
 }
@@ -3326,7 +3446,7 @@ function phBuild(p){
 }
 function phStart(only){
   const pool=only||phPool();
-  if(pool.length<4){alert("此範圍題數不足 4 條，無法出題。");return;}
+  if(!pool.length||(!only&&pool.length<4)){alert("此範圍題數不足，無法出題。");return;}
   let list=shuffle(pool).map(phBuild);
   if(!only&&typeof PEXAM!=="undefined"&&PEXAM.length){
     /* 片語題目（課本選擇題）一併混入練習 */
@@ -3337,6 +3457,9 @@ function phStart(only){
   if(!only){const sel=$("#phNum");const n=sel?sel.value:"all";if(n!=="all")list=list.slice(0,+n);}
   PHQ={list:list,i:0,score:0,wrong:[]};
   $("#phlist").style.display="none";$("#phQuizBtn").style.display="none";$("#phToggle").style.display="none";
+  const sc=$("#phSetCfg"); if(sc)sc.style.display="none";
+  const pc=$("#phCard"); if(pc)pc.innerHTML="";
+  PHCARD=null;
   phRender();
 }
 function phQuit(){
@@ -3344,6 +3467,7 @@ function phQuit(){
   const l=$("#phlist"); if(l)l.style.display="";
   const q=$("#phQuizBtn"); if(q)q.style.display="";
   const t=$("#phToggle"); if(t)t.style.display="";
+  const sc=$("#phSetCfg"); if(sc)sc.style.display="";
   PHQ=null;
 }
 function phRender(){
