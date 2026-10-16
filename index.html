@@ -133,6 +133,28 @@
   .exam .src.L5{background:var(--l5)} .exam .src.L6{background:var(--l6)}
   .exam .q{font-size:1.05rem;font-weight:700;margin:10px 0;line-height:1.5}
   .qpic{display:flex;justify-content:center;margin:4px 0 10px}.qpic svg{max-width:100%;height:auto}
+  .pgcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .pgcard{text-align:left;background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;font:inherit;color:var(--ink)}
+  .pgcard.on{border-color:var(--brand);background:#eef4ff}
+  .pgbar{display:flex;height:9px;background:var(--line);border-radius:99px;overflow:hidden;min-width:60px}
+  .pgbar i{display:block;height:100%;background:#34c27a}.pgbar i.half{background:#f5c542}
+  .pgbar.sm{width:90px;flex:0 0 90px}
+  .pgsum{font-size:.82rem;color:var(--muted);font-weight:700}
+  .pglist{display:flex;flex-direction:column;gap:8px}
+  .pgles{background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:10px 12px}
+  .pgles summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;cursor:pointer;list-style:none}
+  .pgles summary::-webkit-details-marker{display:none}
+  .pgl{font-weight:900;font-size:1.05rem;min-width:2.6em}
+  .pgst{font-size:.8rem;font-weight:800;padding:3px 9px;border-radius:99px}
+  .pgst.done{background:#e3f7ec;color:#1d8a52}.pgst.doing{background:#fff5d6;color:#a87a00}.pgst.todo{background:#eef0f4;color:#7a8190}
+  .pginfo{font-size:.85rem;color:var(--muted);font-weight:700}
+  .pgmis{font-size:.85rem;font-weight:800;color:#d24b4b;margin-left:auto}
+  .pgmis.none{color:var(--muted);font-weight:700}
+  .pgmw{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+  .pgw{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:6px 10px;border-radius:10px;background:#fff1f1}
+  .pgw.fixed{background:#f1f8f3;opacity:.8}
+  .pgw b{font-size:1.05rem}.pgw .pgc{margin-left:auto;font-size:.8rem;color:var(--muted);font-weight:700}
+  @media(max-width:600px){.pgmis{margin-left:0;width:100%}.pgw .pgc{margin-left:0;width:100%}}
   .exam .eopts{display:grid;gap:8px}
   .eopt{padding:12px;border-radius:12px;border:2px solid var(--line);background:#fff;cursor:pointer;font-weight:700;text-align:left;transition:.12s}
   .eopt:hover{border-color:var(--brand)}
@@ -239,6 +261,7 @@
     <button class="tab" data-tab="poly">🔀 一字多義</button>
     <button class="tab" data-tab="phrase">💬 片語會話</button>
     <button class="tab" data-tab="wrong">📕 錯題本</button>
+    <button class="tab" data-tab="progress">📊 學習進度</button>
   </div>
 
   <!-- LEARN -->
@@ -445,6 +468,7 @@
     <div id="pout" style="margin-top:12px"></div>
   </section>
   <section class="panel" id="wrong"></section>
+  <section class="panel" id="progress"></section>
 </div>
 
 <footer>資料來源：康軒國中英語 2 下 文法即時通 L5 / L6 單字（教用）・ 本網頁可離線使用</footer>
@@ -2086,6 +2110,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   if(t.dataset.tab==="exam")renderExam();
   if(t.dataset.tab==="phrase")renderPhraseChips();
   if(t.dataset.tab==="wrong")renderWrong();
+  if(t.dataset.tab==="progress")renderProgress();
 });
 
 /* ---------- LEARN ---------- */
@@ -2153,6 +2178,7 @@ function renderGroupSel(){
     learnScope=listScope=qScope=eScope="all";qSel.clear();qPin=false;qSelW=false;
     renderGroupSel();renderLearnChips();renderListChips();renderQuizChips();renderExamChips();
     updateTotal();buildDeck();renderList();showBest();renderExam();};
+  window.goGroup=go;
   const mk=(parent,label,active,fn)=>{const b=document.createElement("button");b.className="chip"+(active?" active":"");
     b.style.fontWeight="800";b.textContent=label;
     if(active){b.style.borderColor="var(--brand)";b.style.color="var(--brand)";b.style.background="#e8f1ff";}
@@ -2400,6 +2426,7 @@ function submitSpell(){
 }
 function fb(ok,q){
   speak(q.word.en);
+  progLog("q",q.word.group||activeGroup,q.word.lesson,q.word.en,ok);
   if(!ok)logMistake({mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh});
   const f=$("#qfeedback");f.className="feedback "+(ok?"ok":"bad");
   f.textContent=ok?"✅ 答對了！ "+q.word.en+" = "+q.word.zh : "❌ 正確答案： "+q.word.en+" = "+q.word.zh;
@@ -2497,6 +2524,7 @@ function xqChoose(box,btn,q){
   box.querySelectorAll(".eopt")[q.ans].classList.add("correct");
   if(!ok)btn.classList.add("wrong");
   if(ok)XQ.score++;else XQ.wrong.push(q);
+  if(XQ.kind==="exam"||q.mode==="考古題"){const pv=VOCAB.find(v=>v.en===q.say&&v.exam&&v.lesson===q.label&&(XQ.kind!=="exam"||v.group===activeGroup))||VOCAB.find(v=>v.en===q.say&&v.exam);if(pv)progLog("e",pv.group,pv.lesson,pv.en,ok);}
   if(q.say)speak(q.say);
   const key=`(${"ABCD"[q.ans]}) ${q.opts[q.ans]}`;
   if(!ok){const md=q.mode||(XQ.kind==="exam"?"考古題":XQ.kind==="pexam"?"片語題目":"文法考古題");
@@ -2543,6 +2571,7 @@ function renderExam(){
       box.querySelectorAll(".eopt").forEach(b=>b.onclick=null);
       box.querySelectorAll(".eopt")[e.ans].classList.add("correct");
       if(k!==e.ans)btn.classList.add("wrong");
+      progLog("e",arr[i].group,arr[i].lesson,arr[i].en,k===e.ans);
       speak(arr[i].en);
     });
   });
@@ -3905,6 +3934,118 @@ function renderWrong(){
     var p=wBuildPool(loadM().filter(wRecMatch));
     xqStart("wrong",p);};
 }
+/* ===== 學習進度：記錄每個單字的作答（測驗／考古題），依冊別×課別顯示完成度與錯題 =====
+   PROG 結構：{ "群組|課別": { q:{單字:[作答次數,答對次數,最近作答,最近答對]}, e:{同上（考古題）} } }
+   雲端：與錯題本同一張表，app=english_progress（登入後跨裝置合併）。 */
+const PROGKEY='en_progress_v1';
+function progLoad(){try{return JSON.parse(localStorage.getItem(PROGKEY)||'{}')||{}}catch(e){return {}}}
+function progSave(p){try{localStorage.setItem(PROGKEY,JSON.stringify(p))}catch(e){}}
+let _progT=null;
+function progLog(kind,group,lesson,en,ok){
+  if(!group||!lesson||!en)return;
+  const p=progLoad(),k=group+'|'+lesson,now=new Date().toISOString();
+  const u=p[k]||(p[k]={q:{},e:{}}); const m=u[kind]||(u[kind]={});
+  const r=m[en]||(m[en]=[0,0,'','']);
+  r[0]++; if(ok){r[1]++;r[3]=now;} r[2]=now;
+  progSave(p);
+  if(CLOUD&&loggedIn()){clearTimeout(_progT);_progT=setTimeout(()=>progCloudSave(progLoad()).catch(()=>{}),1500);}
+}
+function progMerge(a,b){
+  const o=JSON.parse(JSON.stringify(a||{}));
+  Object.keys(b||{}).forEach(k=>{const ub=b[k],ua=o[k]||(o[k]={q:{},e:{}});
+    ['q','e'].forEach(t=>{const mb=(ub&&ub[t])||{},ma=ua[t]||(ua[t]={});
+      Object.keys(mb).forEach(en=>{const x=ma[en],y=mb[en];
+        ma[en]=x?[Math.max(x[0],y[0]),Math.max(x[1],y[1]),x[2]>y[2]?x[2]:y[2],(x[3]||'')>(y[3]||'')?x[3]:y[3]]:y.slice();});});});
+  return o;
+}
+async function progCloudLoad(){if(!await authOK())return null;const j=await sb('/rest/v1/mistakes?select=data&user_id=eq.'+SESSION.user.id+'&app=eq.english_progress');return (j&&j[0]&&j[0].data)||{};}
+async function progCloudSave(d){if(!await authOK())return;await sb('/rest/v1/mistakes?on_conflict=user_id,app',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:SESSION.user.id,app:'english_progress',data:d,updated_at:new Date().toISOString()})});}
+async function progSyncDown(){if(!CLOUD||!loggedIn())return;try{const c=await progCloudLoad();const m=progMerge(progLoad(),c);progSave(m);await progCloudSave(m);}catch(e){console.warn('prog sync',e)}}
+
+/* 舊紀錄：本功能上線前的「此範圍最佳答對率」（best_群組_範圍）也算「測過」 */
+function progOldBest(group,lesson){
+  let best=0;
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.indexOf('best_'+group+'_')!==0)continue;
+    const sc=k.slice(('best_'+group+'_').length);
+    if(sc==='all'||sc.split('+').indexOf(lesson)>=0){const v=+LS.get(k,0);if(v>best)best=v;}}}catch(e){}
+  return best;
+}
+/* 錯題（只算單字測驗與考古題）依群組＋課別整理；已訂正＝錯了之後又答對過 */
+function progMistakes(group,lesson,P){
+  const out={};
+  loadM().forEach(r=>{const c=wCatOf(r.mode);if(c!=="單字測驗"&&c!=="考古題")return;
+    if(wGrpOf(r)!==group||wLesOf(r)!==lesson)return;
+    const o=out[r.en]||(out[r.en]={en:r.en,zh:r.zh,n:0,last:'',kinds:new Set()});
+    o.n++; if((r.t||'')>o.last)o.last=r.t||''; o.kinds.add(c);});
+  const u=P[group+'|'+lesson]||{q:{},e:{}};
+  Object.values(out).forEach(o=>{const a=(u.q||{})[o.en],b=(u.e||{})[o.en];
+    const lastOk=[a&&a[3],b&&b[3]].filter(Boolean).sort().pop()||'';
+    o.fixed=!!lastOk&&lastOk>o.last;
+    const v=VOCAB.find(x=>x.en===o.en&&x.group===group);if(v&&v.zh&&(!o.zh||o.zh==='考古題'))o.zh=v.zh;});
+  return Object.values(out).sort((x,y)=>(x.fixed-y.fixed)||(y.n-x.n));
+}
+let progGroup=null;
+function progLessonStat(g,les,P){
+  const words=VOCAB.filter(v=>v.group===g&&v.lesson===les);
+  const u=P[g+'|'+les]||{q:{},e:{}};
+  let seen=0,tries=0,right=0,last='';
+  words.forEach(v=>{const r=(u.q||{})[v.en];if(r&&r[0]){seen++;tries+=r[0];right+=r[1];if(r[2]>last)last=r[2];}});
+  let et=0,er=0;Object.values(u.e||{}).forEach(r=>{et+=r[0];er+=r[1];if(r[2]>last)last=r[2];});
+  const nExam=words.filter(v=>v.exam).length, examSeen=words.filter(v=>v.exam&&(u.e||{})[v.en]).length;
+  const old=progOldBest(g,les), mis=progMistakes(g,les,P);
+  const pending=mis.filter(m=>!m.fixed).length;
+  let st='todo';
+  if(seen>=words.length&&words.length)st='done';
+  else if(seen||et||old||mis.length)st='doing';
+  return {les,n:words.length,seen,tries,right,et,er,nExam,examSeen,last,old,mis,pending,st};
+}
+function progFmt(iso){if(!iso)return '';const d=new Date(iso);return (d.getMonth()+1)+'/'+d.getDate();}
+function renderProgress(){
+  const host=$("#progress");if(!host)return;
+  const P=progLoad();
+  const gl=Object.keys(GROUPS);
+  if(!progGroup||!GROUPS[progGroup])progGroup=activeGroup;
+  // 各群組摘要
+  let h='<div class="stat" style="margin:4px 0 10px">每答一題就會記錄。<b>完成</b>＝這課每個單字都在「測驗」答過至少一次；<b>練習中</b>＝已開始但還沒全部答過；錯題「已訂正」＝錯了之後又答對過。</div>';
+  h+='<div class="pgcards">';
+  gl.forEach(g=>{const L=GROUPS[g].units||[];let d=0,i=0,pend=0;
+    L.forEach(l=>{const s=progLessonStat(g,l,P);if(s.n===0)return;if(s.st==='done')d++;else if(s.st==='doing')i++;pend+=s.pending;});
+    const tot=L.filter(l=>VOCAB.some(v=>v.group===g&&v.lesson===l)).length;
+    h+=`<button class="pgcard${g===progGroup?' on':''}" data-g="${g}"><b>${esc(GROUPS[g].name)}</b>
+      <span class="pgbar"><i style="width:${tot?Math.round(d/tot*100):0}%"></i><i class="half" style="width:${tot?Math.round(i/tot*100):0}%"></i></span>
+      <span class="pgsum">✅ ${d}　🟡 ${i}　⬜ ${tot-d-i}${pend?`　❌ 待訂正 ${pend}`:''}</span></button>`;});
+  h+='</div>';
+  // 選定群組的課別明細
+  const g=progGroup, L=(GROUPS[g].units||[]).filter(l=>VOCAB.some(v=>v.group===g&&v.lesson===l));
+  h+=`<h3 style="margin:16px 0 8px">${esc(GROUPS[g].name)}</h3><div class="pglist">`;
+  L.forEach(l=>{const s=progLessonStat(g,l,P);
+    const badge=s.st==='done'?'<span class="pgst done">✅ 完成</span>':s.st==='doing'?'<span class="pgst doing">🟡 練習中</span>':'<span class="pgst todo">⬜ 未開始</span>';
+    const rate=s.tries?Math.round(s.right/s.tries*100)+'%':'—';
+    const info=[`已答 ${s.seen}／${s.n} 字`,`答對率 ${rate}`];
+    if(s.nExam)info.push(`考古題 ${s.examSeen}／${s.nExam}`+(s.et?`（對 ${Math.round(s.er/s.et*100)}%）`:''));
+    if(s.old&&!s.tries)info.push(`舊紀錄最佳 ${s.old}%`);
+    if(s.last)info.push('最近 '+progFmt(s.last));
+    h+=`<details class="pgles"${s.mis.length&&s.pending?' open':''}><summary><span class="pgl">${esc(l)}</span>${badge}
+      <span class="pgbar sm"><i style="width:${s.n?Math.round(s.seen/s.n*100):0}%"></i></span>
+      <span class="pginfo">${info.join('　')}</span>
+      <span class="pgmis${s.mis.length?"":" none"}">${s.mis.length?`❌ 錯題 ${s.mis.length}${s.pending?`（待訂正 ${s.pending}）`:'（都已訂正）'}`:'沒有錯題'}</span></summary>
+      <div class="pgbody">
+        <div class="row" style="gap:8px;margin:6px 0"><button class="btn primary sm" data-quiz="${l}">📝 測驗這課</button>${s.mis.length?`<button class="btn ghost sm" data-wrong="${l}">📕 到錯題本重測這課</button>`:''}</div>
+        ${s.mis.length?'<div class="pgmw">'+s.mis.map(m=>`<div class="pgw${m.fixed?' fixed':''}"><b>${esc(m.en)}</b> <span>${esc(m.zh||'')}</span><span class="pgc">錯 ${m.n} 次・${progFmt(m.last)}${m.kinds.has('考古題')?'・考古題':''}　${m.fixed?'✔ 已訂正':'✘ 待訂正'}</span></div>`).join('')+'</div>':''}
+      </div></details>`;});
+  h+='</div>';
+  host.innerHTML=h;
+  host.querySelectorAll('.pgcard').forEach(b=>b.onclick=()=>{progGroup=b.dataset.g;renderProgress();});
+  host.querySelectorAll('[data-quiz]').forEach(b=>b.onclick=()=>{const l=b.dataset.quiz;
+    if(activeGroup!==g&&window.goGroup)window.goGroup(g);
+    qSel.clear();qSel.add(l);qPin=false;qSelW=false;renderQuizChips();showBest();
+    const tb=document.querySelector('.tab[data-tab="quiz"]');if(tb)tb.click();window.scrollTo(0,0);});
+  host.querySelectorAll('[data-wrong]').forEach(b=>b.onclick=()=>{const l=b.dataset.wrong;
+    wSel=new Set(["單字測驗","考古題"]);wSelG=new Set([g]);wSelL=new Set([l]);
+    const tb=document.querySelector('.tab[data-tab="wrong"]');if(tb)tb.click();window.scrollTo(0,0);});
+}
+if(CLOUD&&loggedIn())progSyncDown();
+
 loadSession(); grSweep(); renderWrong(); if(CLOUD&&loggedIn())syncDown().then(renderWrong).catch(function(){});
 
 /* ===== pins ===== */
