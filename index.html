@@ -2616,7 +2616,7 @@ function vBrowse(){
   $("#vout").innerHTML=h;
 }
 const VTL={type3:"看原形 → 拼三態",zh2v:"看中文 → 選動詞",v2zh:"看動詞 → 選中文",past2base:"看過去式 → 選原形",past2spell:"看過去式 → 拼原形＋中文"};
-let vq=[], vi=0, vscore=0, vwrong=[];
+let vq=[], vi=0, vscore=0, vwrong=[], VRETEST=null; /* VRETEST：錯題本重測中的原始錯題記錄 */
 function vPickType(r){
   var t=vtype;
   if(t==="mix"){ var pool=["type3","zh2v","v2zh","past2base","past2spell"]; t=pool[Math.floor(Math.random()*pool.length)]; }
@@ -2646,7 +2646,7 @@ function vStart(){
   if(vtype==="type3") arr=arr.filter(function(r){return r[4]||r[5];});
   else if(vtype==="past2base"||vtype==="past2spell") arr=arr.filter(function(r){return r[4];});
   if(!arr.length){$("#vout").innerHTML='<p class="stat">此範圍沒有可測的動詞,請調整號碼或題型。</p>';return;}
-  newRound();
+  newRound(); VRETEST=null;
   vq=shuffle(arr).map(function(r){return vBuild(r,vPickType(r));});
   vi=0; vscore=0; vwrong=[]; vRender();
 }
@@ -2692,7 +2692,7 @@ function vRender(){
   $("#vnext").onclick=function(){vi++; if(vi<vq.length)vRender(); else vFinish();};
 }
 function vnorm(s){return (s||"").trim().toLowerCase().replace(/\s+/g," ");}
-function vAfter(ok,r){ speak(r[1]); progLog("q","verb_"+vset,pgVerbUnit(vset,r[0]),r[1],ok); if(ok)vscore++; else vwrong.push(r); if(!ok)logMistake({mode:"verb",en:r[1],zh:r[6],correct:r[1]+" / "+(r[4]||"—")+" / "+(r[5]||"—")}); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
+function vAfter(ok,r){ var q=vq[vi], vs=q.vs||vset; speak(r[1]); progLog("q","verb_"+vs,pgVerbUnit(vs,r[0]),r[1],ok); if(ok)vscore++; else vwrong.push(q); if(!ok)logMistake({mode:"verb",vt:q.t,vs:vs,en:r[1],zh:r[6],correct:r[1]+" / "+(r[4]||"—")+" / "+(r[5]||"—")}); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
 function vGrade3(){
   var r=vq[vi].r; if($("#vsubmit").disabled)return;
   var ok=(!r[4]||vnorm($("#vpast").value)===vnorm(r[4])) && (!r[5]||vnorm($("#vpp").value)===vnorm(r[5]));
@@ -2722,10 +2722,10 @@ function vGradeMC(btn,o,q){
 function vFinish(){
   var pct=Math.round(vscore/vq.length*100);
   var emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
-  var rv=vwrong.length?'<div class="review"><h3 style="color:var(--muted)">📌 需複習 ('+vwrong.length+')</h3>'+vwrong.map(function(r){return '<div class="r"><b>'+esc(r[1])+'</b> — '+esc(r[4]||"—")+' / '+esc(r[5]||"—")+'　'+esc(r[6])+'</div>';}).join('')+'</div>':'<p style="color:var(--ok);font-weight:800">🌟 全部答對!</p>';
+  var rv=vwrong.length?'<div class="review"><h3 style="color:var(--muted)">📌 需複習 ('+vwrong.length+')</h3>'+vwrong.map(function(q){var r=q.r;return '<div class="r"><b>'+esc(r[1])+'</b> — '+esc(r[4]||"—")+' / '+esc(r[5]||"—")+'　'+esc(r[6])+'</div>';}).join('')+'</div>':'<p style="color:var(--ok);font-weight:800">🌟 全部答對!</p>';
   $("#vout").innerHTML='<div class="scorebox"><div style="font-size:3rem">'+emoji+'</div><div class="big">'+vscore+' / '+vq.length+'</div><div style="font-weight:800;color:var(--muted)">答對率 '+pct+'%</div><div class="nav" style="margin-top:16px">'+(vwrong.length?'<button class="btn primary" id="vretrywrong">🔁 只測錯的</button>':'')+'<button class="btn '+(vwrong.length?'ghost':'primary')+'" id="vretry">↻ 再測一次</button><button class="btn ghost" id="vback">⚙ 重選</button></div>'+rv+'</div>';
-  if(vwrong.length)$("#vretrywrong").onclick=function(){var w=vwrong.slice();vq=shuffle(w).map(function(r){return vBuild(r,vPickType(r));});vi=0;vscore=0;vwrong=[];vRender();};
-  $("#vretry").onclick=function(){vStart();};
+  if(vwrong.length)$("#vretrywrong").onclick=function(){var w=vwrong.slice();vq=shuffle(w).map(function(q){var n=vBuild(q.r,q.t);n.vs=q.vs;return n;});vi=0;vscore=0;vwrong=[];vRender();};
+  $("#vretry").onclick=function(){if(VRETEST)wVerbRetest(VRETEST);else vStart();};
   $("#vback").onclick=function(){vBrowse();};
 }
 $$("[data-vset]").forEach(function(c){c.onclick=function(){$$("[data-vset]").forEach(function(x){x.classList.remove("active");});c.classList.add("active");vset=c.dataset.vset;vClampInputs();vBrowse();};});
@@ -2976,7 +2976,7 @@ function pBrowse(){
   });
   $("#pout").innerHTML=h;
 }
-let pq=[],pqi=0,pscore=0,pwrong=[];
+let pq=[],pqi=0,pscore=0,pwrong=[],PRETEST=null; /* PRETEST：錯題本重測中的原始錯題記錄 */
 const PIRR={"cut off":["cut him off","cuts off","cutting off"],"cut out":["cut the picture out","cut you out","cuts out","cutting out"],"take back":["take my words back","took me back","take him back","takes back","taking back","took back"],"dot":["dotted","dotting"],"bring up":["brought up","brings up","bringing up"],"pick up":["picked up","picks up","picking up","pick me up"],"make up":["made up","makes up","making up"],"blow up":["blew up","blown up","blows up","blowing up"],"tip":["tipped","tipping"],"fan":["fanning","fanned"],"make":["made","making"],"take away":["took away","takes away","taking away","take these chairs away"],"hang out":["hung out","hangs out","hanging out","hang the clothes out"],"go out":["going out","goes out","went out","gone out"],"take down":["taken down","took down","takes down","taking down","took the kite down"],"give up":["gave up","gives up","giving up","given up"],"break up":["broke up","broken up","breaks up","breaking up"],"take off":["took off","takes off","taking off","taken off","took a day off"],"put on":["putting on","puts on","put it on"],"stop":["stopped","stopping"],"take out":["took out","takes out","taking out","take us out","take your anger out"],"give away":["gave away","gives away","giving away","give our plan away"],"sign up":["signed up","signs up","signing up"],"come out":["came out","comes out","coming out"],"back up":["back me up","backed up","backs up","backing up"],"work out":["works out","worked out","working out","work it out","work her out"],"check out":["checked out","checks out","checking out","check it out"],draw:["drew","drawn"],kid:["kidding","kidded"],fall:["fell","fallen"],lead:["led"],hold:["held"],leave:["left"],mean:["meant"],rise:["rose","risen"],ring:["rang","rung"],deal:["dealt"],get:["got","getting"],bite:["bit"],trip:["tripped"],hard:["harder","hardest"],lie:["lay","lain","lying","lied"]};
 function pForms(base){const f=[base,base+"s",base+"es",base+"ed",base+"ing",base+"d"];
   if(base.endsWith("e"))f.push(base.slice(0,-1)+"ing");
@@ -3017,11 +3017,11 @@ function pStart(){
     if(ptype!=="word")pExamples(p).forEach(e=>items.push(pBuildContext(p,e)));
     if(ptype!=="context")p.senses.forEach(s=>items.push(pBuildWord(p,s)));
     /* 講義選擇題（字彙EASY通等）一併混入 */
-    if(p.exam)p.exam.forEach(c=>items.push({t:"exam",p,sense:{zh:p.senses.map(s=>s.zh).join("／"),p:""},
+    if(p.exam)p.exam.forEach((c,xi)=>items.push({t:"exam",xi,p,sense:{zh:p.senses.map(s=>s.zh).join("／"),p:""},
       ans:c.opts[c.ans],opts:c.opts.slice(),q:String(c.q).replace(/<br\s*\/?>/gi,"　")}));
   });
   if(!items.length){$("#pout").innerHTML='<div class="empty">此範圍沒有可測的題目</div>';return;}
-  newRound();pq=shuffle(items);pqi=0;pscore=0;pwrong=[];pRender();
+  newRound();PRETEST=null;pq=shuffle(items);pqi=0;pscore=0;pwrong=[];pRender();
 }
 function pHead(){return '<div class="progress"><i style="width:'+(pqi/pq.length*100)+'%"></i></div><div class="counter" style="text-align:center;margin-bottom:8px">第 '+(pqi+1)+' / '+pq.length+' 題　|　得分 '+pscore+'</div>';}
 function pRender(){
@@ -3055,7 +3055,7 @@ function pChoose(btn,o,q){
   if(ok)pscore++;else pwrong.push(q);
   progLog("q","poly",pgPolyUnit(q.p.en),q.p.en,ok);
   speak(q.p.en);
-  if(!ok)logMistake({mode:"poly_"+q.t,en:q.p.en,zh:q.sense.zh,pos:q.sense.p,group:q.p.g,correct:q.p.en+"　"+q.sense.zh});
+  if(!ok)logMistake({mode:"poly_"+q.t,en:q.p.en,zh:q.sense.zh,pos:q.sense.p,group:q.p.g,ex:q.t==="context"?q.sense.ex:undefined,xi:q.t==="exam"?q.xi:undefined,correct:q.p.en+"　"+q.sense.zh});
   const f=$("#pfb");f.className="feedback "+(ok?"ok":"bad");
   var head=(q.ans.toLowerCase()!==q.p.en.toLowerCase())?esc(q.ans)+"（"+esc(q.p.en)+"）":esc(q.p.en);
   f.innerHTML=(ok?"✅ 答對了！ ":"❌ 正解： ")+"<b>"+head+"</b>　"+esc(q.sense.zh);
@@ -3065,8 +3065,8 @@ function pFinish(){
   const pct=Math.round(pscore/pq.length*100),emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
   const rv=pwrong.length?'<div class="review"><h3 style="color:var(--muted)">📌 需複習（'+pwrong.length+'）</h3>'+pwrong.map(q=>'<div class="r"><b>'+esc(q.p.en)+'</b> — '+esc(q.sense.zh)+'</div>').join('')+'</div>':'<p style="color:var(--ok);font-weight:800">🌟 全部答對！</p>';
   $("#pout").innerHTML='<div class="scorebox"><div style="font-size:3rem">'+emoji+'</div><div class="big">'+pscore+' / '+pq.length+'</div><div style="font-weight:800;color:var(--muted)">答對率 '+pct+'%</div><div class="nav" style="margin-top:16px">'+(pwrong.length?'<button class="btn primary" id="pretrywrong">🔁 只測錯的</button>':'')+'<button class="btn '+(pwrong.length?'ghost':'primary')+'" id="pretry">↻ 再測一次</button><button class="btn ghost" id="pback">⚙ 設定</button></div>'+rv+'</div>';
-  if(pwrong.length)$("#pretrywrong").onclick=()=>{const w=pwrong.slice();pq=shuffle(w.map(q=>q.t==="context"?pBuildContext(q.p,q.sense):pBuildWord(q.p,q.sense)));pqi=0;pscore=0;pwrong=[];pRender();};
-  $("#pretry").onclick=pStart;
+  if(pwrong.length)$("#pretrywrong").onclick=()=>{const w=pwrong.slice();pq=shuffle(w.map(q=>q.t==="exam"?Object.assign({},q,{opts:shuffle(q.opts.slice())}):q.t==="context"?pBuildContext(q.p,q.sense):pBuildWord(q.p,q.sense)));pqi=0;pscore=0;pwrong=[];pRender();};
+  $("#pretry").onclick=()=>{if(PRETEST)wPolyRetest(PRETEST);else pStart();};
   $("#pback").onclick=()=>{$("#pout").innerHTML="";};
 }
 renderPolyLessons();
@@ -3490,7 +3490,7 @@ const PHRASE=[
 {"s":"字彙EASY通","c":"生活美語","en":"Don't be afraid of me. I don't bite.","zh":"別害怕我。我不咬人。","n":"","e":""}
 ];
 const PHCATS=[...new Set(PHRASE.map(p=>p.c))];
-let phCat="all", phSet="all", phHide=false, PHQ=null;
+let phCat="all", phSet="all", phHide=false, PHQ=null, PHRETEST=null; /* PHRETEST：錯題本重測中的原始錯題記錄 */
 function phPool(){
   const arr=PHRASE.filter(p=>phCat==="all"||p.c===phCat);
   return arr.slice().sort((a,b)=>PHCATS.indexOf(a.c)-PHCATS.indexOf(b.c)); /* 依分類分組, 不再按曲目 */
@@ -3650,8 +3650,8 @@ function renderPhrase(){
   });
 }
 /* ---- 測驗：英→中／中→英 混合, 誘答從同一分類抽 ---- */
-function phBuild(p){
-  const e2c=Math.random()<.5;
+function phBuild(p,dir){
+  const e2c=(typeof dir==="boolean")?dir:Math.random()<.5; /* dir：指定方向（錯題重測用） */
   let bag=PHRASE.filter(x=>x.c===p.c&&x.en!==p.en);
   if(bag.length<3)bag=PHRASE.filter(x=>x.en!==p.en);
   const key=e2c?"zh":"en";
@@ -3663,7 +3663,9 @@ function phBuild(p){
 function phStart(only){
   const pool=only||phPool();
   if(!pool.length||(!only&&pool.length<4)){alert("此範圍題數不足，無法出題。");return;}
-  let list=shuffle(pool).map(phBuild);
+  if(!only)PHRETEST=null;
+  /* only 可以是片語本身，或上一輪答錯的題目（保留原方向；課本選擇題保留原題） */
+  let list=shuffle(pool).map(x=>x.exam?Object.assign({},x):x.p?phBuild(x.p,x.e2c):phBuild(x));
   if(!only&&typeof PEXAM!=="undefined"&&PEXAM.length){
     /* 片語題目（課本選擇題）一併混入練習 */
     const exQ=PEXAM.map(e=>({p:{s:e.src||"片語題目",c:"選擇題",en:e.opts[e.ans],zh:"",n:e.exp||"",e:null},
@@ -3684,7 +3686,7 @@ function phQuit(){
   const q=$("#phQuizBtn"); if(q)q.style.display="";
   const t=$("#phToggle"); if(t)t.style.display="";
   const sc=$("#phSetCfg"); if(sc)sc.style.display="";
-  PHQ=null;
+  PHQ=null; PHRETEST=null;
 }
 function phRender(){
   const q=PHQ.list[PHQ.i], n=PHQ.list.length;
@@ -3705,12 +3707,12 @@ function phChoose(box,btn,q){
   box.querySelectorAll(".eopt").forEach(x=>x.onclick=null);
   box.querySelectorAll(".eopt")[q.ans].classList.add("correct");
   if(!ok)btn.classList.add("wrong");
-  if(ok)PHQ.score++;else PHQ.wrong.push(q.p);
+  if(ok)PHQ.score++;else PHQ.wrong.push(q);
   if(q.exam)progLog("q","phrase","課本選擇題",pgPexKey(q.q),ok);else progLog("q","phrase",q.p.c,q.p.en,ok);
   speak(phSay(q.p.en));
   if(!ok){
     if(q.exam)logMistake({mode:"片語題目",en:q.p.en,zh:"片語題目",pos:q.p.s,group:activeGroup,correct:q.p.en});
-    else logMistake({mode:"片語會話",en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
+    else logMistake({mode:"片語會話",e2c:q.e2c,en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
   }
   const e=box.querySelector(".expl");
   let t=`<span class="lbl">${ok?"✅ 答對了":"❌ 正解"}</span>${esc(q.p.en)}　${esc(q.p.zh)}`;
@@ -3724,7 +3726,7 @@ function phFinish(){
   const emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
   const rv=PHQ.wrong.length
     ?`<div class="review"><h3 style="color:var(--muted)">📌 需複習（${PHQ.wrong.length}）</h3>`+
-     PHQ.wrong.map(p=>`<div class="r"><b>${esc(p.en)}</b> — ${esc(p.zh)}</div>`).join("")+"</div>"
+     PHQ.wrong.map(q=>`<div class="r"><b>${esc(q.p.en)}</b> — ${esc(q.p.zh||q.q)}</div>`).join("")+"</div>"
     :'<p style="color:var(--ok);font-weight:800">🌟 全部答對！</p>';
   $("#phQuiz").innerHTML=`<div class="scorebox"><div style="font-size:3rem">${emoji}</div><div class="big">${PHQ.score} / ${n}</div>`+
     `<div style="font-weight:800;color:var(--muted)">答對率 ${pct}%</div><div class="nav" style="margin-top:16px">`+
@@ -3733,7 +3735,7 @@ function phFinish(){
     '<button class="btn ghost" id="phback">⬅ 回片語列表</button></div>'+rv+"</div>";
   const wrong=PHQ.wrong.slice();
   if(wrong.length)$("#phagainwrong").onclick=()=>phStart(wrong);
-  $("#phagain").onclick=()=>phStart();
+  $("#phagain").onclick=()=>{if(PHRETEST)wPhraseRetest(PHRETEST);else phStart();};
   $("#phback").onclick=phQuit;
 }
 /* ---- 片語題目（課本即時通） ---- */
@@ -3856,6 +3858,75 @@ function wTypeSummary(recs){
   recs.forEach(function(r){if(!wIsWordRec(r))return;const k=r.group+"|"+r.en+"|"+r.mode;if(seen.has(k))return;seen.add(k);n[r.mode]=(n[r.mode]||0)+1;});
   return {total:seen.size,text:Object.keys(lab).filter(function(k){return n[k];}).map(function(k){return lab[k]+" "+n[k];}).join("、")};
 }
+/* 動詞三態／一字多義／片語會話錯題：回到各自的分頁，用當初答錯的題型重測。
+   舊記錄沒存題型時：動詞＝看原形拼三態（預設題型），片語＝英→中、中→英兩個方向都測。 */
+function wIsVerbRec(r){return r.mode==="verb";}
+function wIsPolyRec(r){return String(r.mode||"").indexOf("poly_")===0;}
+function wIsPhRec(r){return r.mode==="片語會話";}
+function wTab(name){const tb=document.querySelector('.tab[data-tab="'+name+'"]');if(tb)tb.click();window.scrollTo(0,0);}
+function wVerbQs(recs){
+  const seen=new Set(),qs=[];
+  recs.forEach(function(r){
+    if(!wIsVerbRec(r))return;
+    const sets=r.vs&&VSETS[r.vs]?[r.vs]:["irr","all"];
+    let vs=null,row=null;
+    sets.some(function(k){row=VSETS[k].data.find(function(x){return x[1]===r.en;});if(row){vs=k;return true;}return false;});
+    if(!row)return;
+    let t=r.vt||((row[4]||row[5])?"type3":"v2zh");
+    if((t==="past2base"||t==="past2spell")&&!row[4])t="v2zh";
+    if(t==="type3"&&!(row[4]||row[5]))t="v2zh";
+    const k=row[1]+"|"+t; if(seen.has(k))return; seen.add(k);
+    const q=vBuild(row,t); q.vs=vs; qs.push(q);
+  });
+  return qs;
+}
+function wVerbRetest(recs){
+  const qs=wVerbQs(recs); if(!qs.length){alert("這個範圍沒有可重測的動詞錯題。");return;}
+  wTab("verb"); newRound(); VRETEST=recs.slice();
+  vq=shuffle(qs); vi=0; vscore=0; vwrong=[]; vRender();
+}
+function wPolyQs(recs){
+  const seen=new Set(),qs=[];
+  recs.forEach(function(r){
+    if(!wIsPolyRec(r))return;
+    const p=POLY.find(function(x){return x.en===r.en;}); if(!p)return;
+    let t=String(r.mode).slice(5), add=[];
+    if(t==="exam"&&p.exam&&p.exam.length){
+      const list=(r.xi!=null&&p.exam[r.xi])?[r.xi]:p.exam.map(function(c,i){return i;});
+      list.forEach(function(xi){const c=p.exam[xi];
+        add.push({k:"x"+xi,q:{t:"exam",xi,p,sense:{zh:p.senses.map(function(s){return s.zh;}).join("／"),p:""},
+          ans:c.opts[c.ans],opts:shuffle(c.opts.slice()),q:String(c.q).replace(/<br\s*\/?>/gi,"　")}});});
+    }else if(t==="context"&&pHasCtx(p)){
+      const ex=pExamples(p), e=ex.find(function(x){return r.ex&&x.ex===r.ex;})||ex.find(function(x){return x.zh===r.zh;})||ex[0];
+      add.push({k:"c"+e.ex,q:pBuildContext(p,e)});
+    }else{
+      const s=p.senses.find(function(x){return x.zh===r.zh;})||p.senses[0];
+      add.push({k:"w"+s.zh,q:pBuildWord(p,s)});
+    }
+    add.forEach(function(a){const k=p.en+"|"+a.k;if(seen.has(k))return;seen.add(k);qs.push(a.q);});
+  });
+  return qs;
+}
+function wPolyRetest(recs){
+  const qs=wPolyQs(recs); if(!qs.length){alert("這個範圍沒有可重測的一字多義錯題。");return;}
+  wTab("poly"); newRound(); PRETEST=recs.slice();
+  pq=shuffle(qs); pqi=0; pscore=0; pwrong=[]; pRender();
+}
+function wPhraseItems(recs){
+  const seen=new Set(),its=[];
+  recs.forEach(function(r){
+    if(!wIsPhRec(r))return;
+    const p=PHRASE.find(function(x){return x.en===r.en&&(!r.zh||x.zh===r.zh);})||PHRASE.find(function(x){return x.en===r.en;}); if(!p)return;
+    (typeof r.e2c==="boolean"?[r.e2c]:[true,false]).forEach(function(d){const k=p.en+"|"+p.zh+"|"+d;if(seen.has(k))return;seen.add(k);its.push({p:p,e2c:d});});
+  });
+  return its;
+}
+function wPhraseRetest(recs){
+  const its=wPhraseItems(recs); if(!its.length){alert("這個範圍沒有可重測的片語錯題。");return;}
+  wTab("phrase"); newRound(); phStart(its); PHRETEST=recs.slice();
+}
+function wTypeCount(qs,lab,key){const n={};qs.forEach(function(q){const k=key(q);n[k]=(n[k]||0)+1;});
+  return Object.keys(lab).filter(function(k){return n[k];}).map(function(k){return lab[k]+" "+n[k];}).join("、");}
 function wBuildPool(a){
   /* 把錯題記錄反查回原題（考古題/文法考古題/片語題目），其餘有中英對照的記錄組成中→英選擇題 */
   var seen=new Set(), pool=[];
@@ -3869,8 +3940,8 @@ function wBuildPool(a){
     }else if(r.mode==="片語題目"){
       var p=PEXAM.find(function(x){return x.opts[x.ans]===r.en;});
       if(p)add("p|"+p.q.slice(0,60),{q:p.q,opts:p.opts,ans:p.ans,src:p.src,label:"片語題目",say:p.opts[p.ans],exp:p.exp||"",tip:"",mode:"片語題目",cat:"片語題目"});
-    }else if(wIsWordRec(r)){
-      /* 單字錯題改由 wWordRetest 依原題型重測 */
+    }else if(wIsWordRec(r)||wIsVerbRec(r)||wIsPolyRec(r)||wIsPhRec(r)){
+      /* 單字／動詞三態／一字多義／片語會話錯題改由 wWordRetest 等依原題型重測 */
     }else if(r.en&&r.zh){
       var isPh=r.mode==="片語會話";
       var srcArr=isPh?PHRASE:VOCAB;
@@ -3923,13 +3994,18 @@ function renderWrong(){
   wSelL=new Set(Array.from(wSelL).filter(function(l){return less[l];}));
   var recs=aG.filter(function(r){return wSelL.size===0||wSelL.has(wLesOf(r));});
   var fpool=wBuildPool(recs);
-  if(pool.length||a.some(wIsWordRec)){
+  if(pool.length||a.some(function(r){return wIsWordRec(r)||wIsVerbRec(r)||wIsPolyRec(r)||wIsPhRec(r);})){
     h+='<div class="row" style="margin-top:8px" id="wCatRow"></div>';
     if(Object.keys(grps).length>1)h+='<div class="row" id="wGrpRow"></div>';
     if(Object.keys(less).length>1)h+='<div class="row" id="wLesRow"></div>';
-    var wts=wTypeSummary(recs);
-    h+='<div class="row">'+(wts.total?'<button class="btn primary sm" id="wWordBtn">📝 重測單字錯題（'+wts.total+' 題・依原題型：'+wts.text+'）</button>':'')
-      +(fpool.length?'<button class="btn '+(wts.total?'ghost':'primary')+' sm" id="wQuizBtn">📝 重測'+(wts.total?'其他':'')+'錯題（'+fpool.length+' 題）</button>':'')+'</div>';
+    var wts=wTypeSummary(recs), wvq=wVerbQs(recs), wpq=wPolyQs(recs), whq=wPhraseItems(recs);
+    var wbtn=function(id,label,n,detail){return '<button class="btn primary sm" id="'+id+'">📝 '+label+'（'+n+' 題'+(detail?'・依原題型：'+detail:'')+'）</button>';};
+    h+='<div class="stat" style="margin-top:6px">重測時一律用當初答錯的題型出題</div><div class="row">'
+      +(wts.total?wbtn("wWordBtn","單字錯題",wts.total,wts.text):'')
+      +(wvq.length?wbtn("wVerbBtn","動詞三態",wvq.length,wTypeCount(wvq,{type3:"拼三態",zh2v:"看中選動詞",v2zh:"看動詞選中文",past2base:"過去式選原形",past2spell:"過去式拼原形"},function(q){return q.t;})):'')
+      +(wpq.length?wbtn("wPolyBtn","一字多義",wpq.length,wTypeCount(wpq,{context:"看例句",word:"看字義",exam:"講義選擇題"},function(q){return q.t;})):'')
+      +(whq.length?wbtn("wPhBtn","片語會話",whq.length,wTypeCount(whq,{t:"英→中",f:"中→英"},function(q){return q.e2c?"t":"f";})):'')
+      +(fpool.length?wbtn("wQuizBtn","考古題／片語題目・原題",fpool.length,""):'')+'</div>';
   }
   var groups={};recs.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
   var rounds=Object.keys(groups).sort().reverse();
@@ -3964,6 +4040,7 @@ function renderWrong(){
   }
   var wb=$("#wWordBtn");
   if(wb)wb.onclick=function(){wWordRetest(loadM().filter(wRecMatch));};
+  [["#wVerbBtn",wVerbRetest],["#wPolyBtn",wPolyRetest],["#wPhBtn",wPhraseRetest]].forEach(function(x){var b=$(x[0]);if(b)b.onclick=function(){x[1](loadM().filter(wRecMatch));};});
   var qb=$("#wQuizBtn");
   if(qb)qb.onclick=function(){newRound();
     var p=wBuildPool(loadM().filter(wRecMatch));
