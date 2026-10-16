@@ -2325,7 +2325,9 @@ function makeQuestion(word,pool,type){
   const distract=pickDistractors(word,dp,3,key);
   return{type,word,opts:shuffle([word,...distract]),key};
 }
+let WRETEST=null; /* 錯題本單字重測中：存原始錯題記錄 */
 $("#startquiz").onclick=()=>{
+  WRETEST=null;
   let scope = qSelW ? selectedWords() : qPin ? VOCAB.filter(v=>isPinned(v.en)) : qSel.size ? VOCAB.filter(v=>v.group===activeGroup && qSel.has(v.lesson)) : VOCAB.filter(v=>v.group===activeGroup);
   let qpool=(qType==="cloze")?scope.filter(v=>(v.clz&&v.clz.length&&!EASON_GROUPS.has(v.group))||clozeBlank(v)):scope;
   if(!qpool.length){alert("目前沒有可測的單字(此範圍／釘選／已選為空)");return;}
@@ -2441,11 +2443,11 @@ function fb(ok,q){
   $("#qnext").style.display="inline-block";$("#qnext").focus();
 }
 $("#qnext").onclick=()=>{qi++;if(qi<questions.length)renderQuestion();else finish();};
-$("#quitquiz").onclick=()=>{$("#qrun").style.display="none";$("#qcfg").style.display="block";showBest();};
+$("#quitquiz").onclick=()=>{WRETEST=null;$("#qrun").style.display="none";$("#qcfg").style.display="block";showBest();};
 function finish(){
   $("#pbar").style.width="100%";
   const pct=Math.round(score/questions.length*100);
-  const key="best_"+activeGroup+"_"+qScopeKey();const best=Math.max(LS.get(key,0),pct);LS.set(key,best);
+  if(!WRETEST){const key="best_"+activeGroup+"_"+qScopeKey();const best=Math.max(LS.get(key,0),pct);LS.set(key,best);}
   let emoji=pct>=90?"🏆":pct>=70?"🎉":pct>=50?"💪":"📖";
   let msg=pct>=90?"太厲害了！":pct>=70?"做得很好！":pct>=50?"繼續加油！":"多練習幾次會更好！";
   $("#qrun").style.display="none";
@@ -2462,8 +2464,8 @@ function finish(){
      </div>${rv}</div>`;
   $("#qresult").style.display="block";
   if(wrong.length)$("#retrywrong").onclick=()=>{const pool=(qPin||qSelW)?VOCAB:VOCAB.filter(v=>v.group===activeGroup);questions=shuffle(wrong).map(q=>makeQuestion(q.word,pool,q.type));qi=0;score=0;wrong=[];$("#qresult").style.display="none";$("#qrun").style.display="block";renderQuestion();};
-  $("#retryall").onclick=()=>{$("#qresult").style.display="none";$("#startquiz").click();};
-  $("#backcfg").onclick=()=>{$("#qresult").style.display="none";$("#qcfg").style.display="block";showBest();};
+  $("#retryall").onclick=()=>{$("#qresult").style.display="none";if(WRETEST)wWordRetest(WRETEST);else $("#startquiz").click();};
+  $("#backcfg").onclick=()=>{WRETEST=null;$("#qresult").style.display="none";$("#qcfg").style.display="block";showBest();};
 }
 function qScopeKey(){return qSelW?"selw":qPin?"pin":(qSel.size?[...qSel].sort().join("+"):"all");}
 function showBest(){const b=LS.get("best_"+activeGroup+"_"+qScopeKey(),0);$("#beststat").textContent=b?("此範圍最佳答對率： "+b+"%"):"還沒有紀錄，開始第一次測驗吧！";}
@@ -3830,6 +3832,30 @@ window.acctSync=async function(){await syncDown();renderWrong();};
 window.wExport=function(){var blob=new Blob([JSON.stringify(loadM(),null,1)],{type:'application/json'});var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download='英文錯題本.json';a.click();URL.revokeObjectURL(u);};
 window.wImport=function(){var i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=function(){var f=i.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{saveM(mergeArr(loadM(),JSON.parse(rd.result)));cloudMirror();renderWrong();}catch(e){alert('匯入失敗:'+e.message)}};rd.readAsText(f);};i.click();};
 window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;saveM([]);if(CLOUD&&loggedIn())cloudSave([]).catch(function(){});renderWrong();};
+/* 單字錯題依「當初答錯的題型」重測：拼字／聽英拼字要拼、看例句選字出例句、其餘選擇題照原型 */
+function wIsWordRec(r){return TYPES.indexOf(String(r.mode||""))>=0;}
+function wWordRetest(recs){
+  const seen=new Set(),qs=[];
+  recs.forEach(function(r){
+    if(!wIsWordRec(r))return;
+    const w=VOCAB.find(function(x){return x.en===r.en&&x.group===(r.group||"kang");})||VOCAB.find(function(x){return x.en===r.en;});
+    if(!w)return;
+    const k=w.group+"|"+w.en+"|"+r.mode; if(seen.has(k))return; seen.add(k);
+    qs.push(makeQuestion(w,VOCAB.filter(function(x){return x.group===w.group;}),r.mode));
+  });
+  if(!qs.length){alert("這個範圍沒有可重測的單字錯題。");return;}
+  WRETEST=recs.slice();
+  questions=shuffle(qs);qi=0;score=0;wrong=[];newRound();
+  const tb=document.querySelector('.tab[data-tab="quiz"]');if(tb)tb.click();
+  WRETEST=recs.slice();
+  $("#qcfg").style.display="none";$("#qresult").style.display="none";$("#qrun").style.display="block";
+  window.scrollTo(0,0);renderQuestion();
+}
+function wTypeSummary(recs){
+  const n={},lab={spell:"看中拼字",listenspell:"聽英拼字",cloze:"看例句",en2zh:"英→中",zh2en:"中→英",listen:"聽音選字"},seen=new Set();
+  recs.forEach(function(r){if(!wIsWordRec(r))return;const k=r.group+"|"+r.en+"|"+r.mode;if(seen.has(k))return;seen.add(k);n[r.mode]=(n[r.mode]||0)+1;});
+  return {total:seen.size,text:Object.keys(lab).filter(function(k){return n[k];}).map(function(k){return lab[k]+" "+n[k];}).join("、")};
+}
 function wBuildPool(a){
   /* 把錯題記錄反查回原題（考古題/文法考古題/片語題目），其餘有中英對照的記錄組成中→英選擇題 */
   var seen=new Set(), pool=[];
@@ -3843,6 +3869,8 @@ function wBuildPool(a){
     }else if(r.mode==="片語題目"){
       var p=PEXAM.find(function(x){return x.opts[x.ans]===r.en;});
       if(p)add("p|"+p.q.slice(0,60),{q:p.q,opts:p.opts,ans:p.ans,src:p.src,label:"片語題目",say:p.opts[p.ans],exp:p.exp||"",tip:"",mode:"片語題目",cat:"片語題目"});
+    }else if(wIsWordRec(r)){
+      /* 單字錯題改由 wWordRetest 依原題型重測 */
     }else if(r.en&&r.zh){
       var isPh=r.mode==="片語會話";
       var srcArr=isPh?PHRASE:VOCAB;
@@ -3895,11 +3923,13 @@ function renderWrong(){
   wSelL=new Set(Array.from(wSelL).filter(function(l){return less[l];}));
   var recs=aG.filter(function(r){return wSelL.size===0||wSelL.has(wLesOf(r));});
   var fpool=wBuildPool(recs);
-  if(pool.length){
+  if(pool.length||a.some(wIsWordRec)){
     h+='<div class="row" style="margin-top:8px" id="wCatRow"></div>';
     if(Object.keys(grps).length>1)h+='<div class="row" id="wGrpRow"></div>';
     if(Object.keys(less).length>1)h+='<div class="row" id="wLesRow"></div>';
-    h+='<div class="row"><button class="btn primary sm" id="wQuizBtn">📝 重測錯題（'+fpool.length+' 題）</button></div>';
+    var wts=wTypeSummary(recs);
+    h+='<div class="row">'+(wts.total?'<button class="btn primary sm" id="wWordBtn">📝 重測單字錯題（'+wts.total+' 題・依原題型：'+wts.text+'）</button>':'')
+      +(fpool.length?'<button class="btn '+(wts.total?'ghost':'primary')+' sm" id="wQuizBtn">📝 重測'+(wts.total?'其他':'')+'錯題（'+fpool.length+' 題）</button>':'')+'</div>';
   }
   var groups={};recs.forEach(function(r){(groups[r.round]=groups[r.round]||[]).push(r);});
   var rounds=Object.keys(groups).sort().reverse();
@@ -3932,6 +3962,8 @@ function renderWrong(){
     Object.keys(less).sort(function(x,y){return x.localeCompare(y,undefined,{numeric:true});}).forEach(function(l){
       mkc(lrow,wSelL.has(l),l+"（"+less[l]+"）",function(){if(wSelL.has(l))wSelL.delete(l);else wSelL.add(l);});});
   }
+  var wb=$("#wWordBtn");
+  if(wb)wb.onclick=function(){wWordRetest(loadM().filter(wRecMatch));};
   var qb=$("#wQuizBtn");
   if(qb)qb.onclick=function(){newRound();
     var p=wBuildPool(loadM().filter(wRecMatch));
