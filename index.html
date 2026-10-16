@@ -2430,7 +2430,7 @@ function submitSpell(){
 function fb(ok,q){
   speak(q.word.en);
   progLog("q",q.word.group||activeGroup,q.word.lesson,q.word.en,ok);
-  if(!ok)logMistake({mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh});
+  wAns(ok,{mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh});
   const f=$("#qfeedback");f.className="feedback "+(ok?"ok":"bad");
   f.textContent=ok?"✅ 答對了！ "+q.word.en+" = "+q.word.zh : "❌ 正確答案： "+q.word.en+" = "+q.word.zh;
   if(q.word.ex){
@@ -2530,9 +2530,9 @@ function xqChoose(box,btn,q){
   if(XQ.kind==="exam"||q.mode==="考古題"){const pv=VOCAB.find(v=>v.en===q.say&&v.exam&&v.lesson===q.label&&(XQ.kind!=="exam"||v.group===activeGroup))||VOCAB.find(v=>v.en===q.say&&v.exam);if(pv)progLog("e",pv.group,pv.lesson,pv.en,ok);}
   if(q.say)speak(q.say);
   const key=`(${"ABCD"[q.ans]}) ${q.opts[q.ans]}`;
-  if(!ok){const md=q.mode||(XQ.kind==="exam"?"考古題":XQ.kind==="pexam"?"片語題目":"文法考古題");
-    if(md==="文法考古題")grStash([{mode:md,en:q.say,zh:q.zh||q.label,pos:q.src,correct:key+"　"+q.label,t:new Date().toISOString(),round:quizRound||new Date().toISOString()}]); /* 文法錯題改送文法學習網 */
-    else logMistake({mode:md,en:q.say,zh:q.zh||q.label,pos:q.src,group:activeGroup,correct:key+"　"+q.label});}
+  {const md=q.mode||(XQ.kind==="exam"?"考古題":XQ.kind==="pexam"?"片語題目":"文法考古題");
+    if(md==="文法考古題"){if(!ok)grStash([{mode:md,en:q.say,zh:q.zh||q.label,pos:q.src,correct:key+"　"+q.label,t:new Date().toISOString(),round:quizRound||new Date().toISOString()}]);} /* 文法錯題改送文法學習網 */
+    else wAns(ok,{mode:md,en:q.say,zh:q.zh||q.label,pos:q.src,group:activeGroup,correct:key+"　"+q.label});}
   const e=box.querySelector(".expl");
   let s=`<span class="lbl">${ok?"✅ 答對了":"❌ 正解"}</span>${esc(key)}`;
   if(q.exp)s+=`<div style="margin-top:6px">${esc(q.exp)}</div>`;
@@ -2575,6 +2575,7 @@ function renderExam(){
       box.querySelectorAll(".eopt")[e.ans].classList.add("correct");
       if(k!==e.ans)btn.classList.add("wrong");
       progLog("e",arr[i].group,arr[i].lesson,arr[i].en,k===e.ans);
+      if(k===e.ans)wHit({mode:"考古題",en:arr[i].en});
       speak(arr[i].en);
     });
   });
@@ -2692,7 +2693,7 @@ function vRender(){
   $("#vnext").onclick=function(){vi++; if(vi<vq.length)vRender(); else vFinish();};
 }
 function vnorm(s){return (s||"").trim().toLowerCase().replace(/\s+/g," ");}
-function vAfter(ok,r){ var q=vq[vi], vs=q.vs||vset; speak(r[1]); progLog("q","verb_"+vs,pgVerbUnit(vs,r[0]),r[1],ok); if(ok)vscore++; else vwrong.push(q); if(!ok)logMistake({mode:"verb",vt:q.t,vs:vs,en:r[1],zh:r[6],correct:r[1]+" / "+(r[4]||"—")+" / "+(r[5]||"—")}); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
+function vAfter(ok,r){ var q=vq[vi], vs=q.vs||vset; speak(r[1]); progLog("q","verb_"+vs,pgVerbUnit(vs,r[0]),r[1],ok); if(ok)vscore++; else vwrong.push(q); wAns(ok,{mode:"verb",vt:q.t,vs:vs,en:r[1],zh:r[6],correct:r[1]+" / "+(r[4]||"—")+" / "+(r[5]||"—")}); $("#vnext").style.display="inline-block"; $("#vnext").focus(); }
 function vGrade3(){
   var r=vq[vi].r; if($("#vsubmit").disabled)return;
   var ok=(!r[4]||vnorm($("#vpast").value)===vnorm(r[4])) && (!r[5]||vnorm($("#vpp").value)===vnorm(r[5]));
@@ -3055,7 +3056,7 @@ function pChoose(btn,o,q){
   if(ok)pscore++;else pwrong.push(q);
   progLog("q","poly",pgPolyUnit(q.p.en),q.p.en,ok);
   speak(q.p.en);
-  if(!ok)logMistake({mode:"poly_"+q.t,en:q.p.en,zh:q.sense.zh,pos:q.sense.p,group:q.p.g,ex:q.t==="context"?q.sense.ex:undefined,xi:q.t==="exam"?q.xi:undefined,correct:q.p.en+"　"+q.sense.zh});
+  wAns(ok,{mode:"poly_"+q.t,en:q.p.en,zh:q.sense.zh,pos:q.sense.p,group:q.p.g,ex:q.t==="context"?q.sense.ex:undefined,xi:q.t==="exam"?q.xi:undefined,correct:q.p.en+"　"+q.sense.zh});
   const f=$("#pfb");f.className="feedback "+(ok?"ok":"bad");
   var head=(q.ans.toLowerCase()!==q.p.en.toLowerCase())?esc(q.ans)+"（"+esc(q.p.en)+"）":esc(q.p.en);
   f.innerHTML=(ok?"✅ 答對了！ ":"❌ 正解： ")+"<b>"+head+"</b>　"+esc(q.sense.zh);
@@ -3710,10 +3711,8 @@ function phChoose(box,btn,q){
   if(ok)PHQ.score++;else PHQ.wrong.push(q);
   if(q.exam)progLog("q","phrase","課本選擇題",pgPexKey(q.q),ok);else progLog("q","phrase",q.p.c,q.p.en,ok);
   speak(phSay(q.p.en));
-  if(!ok){
-    if(q.exam)logMistake({mode:"片語題目",en:q.p.en,zh:"片語題目",pos:q.p.s,group:activeGroup,correct:q.p.en});
-    else logMistake({mode:"片語會話",e2c:q.e2c,en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
-  }
+  if(q.exam)wAns(ok,{mode:"片語題目",en:q.p.en,zh:"片語題目",pos:q.p.s,group:activeGroup,correct:q.p.en});
+  else wAns(ok,{mode:"片語會話",e2c:q.e2c,en:q.p.en,zh:q.p.zh,pos:q.p.c,group:activeGroup,correct:q.p.en+"　"+q.p.zh});
   const e=box.querySelector(".expl");
   let t=`<span class="lbl">${ok?"✅ 答對了":"❌ 正解"}</span>${esc(q.p.en)}　${esc(q.p.zh)}`;
   if(q.p.n)t+=`<div style="margin-top:6px">${esc(q.p.n)}</div>`;
@@ -3796,12 +3795,15 @@ async function doRefresh(){if(!SESSION||!SESSION.refresh_token)return false;try{
 async function authOK(){if(!SESSION)return false;if(SESSION.expires_at-Date.now()<60000){if(!await doRefresh())return false}return loggedIn();}
 async function cloudLoad(){if(!await authOK())return null;const j=await sb('/rest/v1/mistakes?select=data&user_id=eq.'+SESSION.user.id+'&app=eq.'+APPID);return (j&&j[0]&&j[0].data)||[];}
 async function cloudSave(arr){if(!await authOK())return;await sb('/rest/v1/mistakes?on_conflict=user_id,app',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({user_id:SESSION.user.id,app:APPID,data:arr,updated_at:new Date().toISOString()})});}
-function loadM(){try{return JSON.parse(localStorage.getItem(MKEY)||'[]')}catch(e){return []}}
-function saveM(a){try{localStorage.setItem(MKEY,JSON.stringify(a))}catch(e){}}
+/* done＝已答對 3 次移出錯題本；記錄保留在陣列裡當刪除標記，雲端合併時才不會被其他裝置的舊資料加回來 */
+function loadMAll(){try{return JSON.parse(localStorage.getItem(MKEY)||'[]')}catch(e){return []}}
+function saveMAll(a){try{localStorage.setItem(MKEY,JSON.stringify(a))}catch(e){}}
+function loadM(){return loadMAll().filter(function(r){return !r.done;});}
+function saveM(a){var ks=new Set(a.map(mkKey));saveMAll(a.concat(loadMAll().filter(function(r){return r.done&&!ks.has(mkKey(r));})));}
 function mkKey(r){return (r.round||'')+'|'+(r.t||'')+'|'+(r.en||'')+'|'+(r.mode||'')}
-function mergeArr(a,b){const m=new Map();[...(a||[]),...(b||[])].forEach(r=>m.set(mkKey(r),r));return [...m.values()];}
-async function syncDown(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoad();const merged=mergeArr(loadM(),cloud);saveM(merged);grSweep();await cloudSave(loadM());await grFlush();try{await syncDownPins();}catch(ep){}}catch(e){console.warn('sync',e)}}
-function cloudMirror(){if(CLOUD&&loggedIn())cloudSave(loadM()).catch(()=>{})}
+function mergeArr(a,b){const m=new Map();[...(a||[]),...(b||[])].forEach(r=>{const k=mkKey(r),o=m.get(k);if(o&&o.done&&!r.done)return;m.set(k,r);});return [...m.values()];}
+async function syncDown(){if(!CLOUD||!loggedIn())return;try{const cloud=await cloudLoad();const merged=mergeArr(loadMAll(),cloud);saveMAll(merged);grSweep();await cloudSave(loadMAll());await grFlush();try{await syncDownPins();}catch(ep){}}catch(e){console.warn('sync',e)}}
+function cloudMirror(){if(CLOUD&&loggedIn())cloudSave(loadMAll()).catch(()=>{})}
 /* ---- 文法錯題轉運：本站不留存文法考古題錯題，改送「英文文法學習網」（雲端 app=grammar_inbox）----
    grSweep：把本地錯題中殘留的文法記錄移到 outbox；grFlush：登入時把 outbox 併入雲端轉運區。 */
 const GRKEY='en_gr_outbox_v1';
@@ -3820,7 +3822,36 @@ async function grFlush(){if(!CLOUD||!loggedIn())return;const out=grLoad();if(!ou
     localStorage.setItem(GRKEY,'[]');
   }catch(e){console.warn('grFlush',e)}}
 function newRound(){quizRound=new Date().toISOString();}
-function logMistake(rec){rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadM();a.push(rec);saveM(a);cloudMirror();}
+function logMistake(rec){rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadMAll();a.forEach(function(b){if(b.hits&&wSame(b,rec))b.hits=0;});a.push(rec);saveMAll(a);cloudMirror();}
+/* 錯題答對計數：同一題、同一題型答對 W_NEED 次就移出錯題本；中途答錯會歸零重算 */
+const W_NEED=3;
+function wSame(b,x){ /* b＝錯題本裡的記錄，x＝剛作答的題 */
+  if(b.done||!x||b.en!==x.en)return false;
+  var m=String(b.mode||"");
+  if(wIsWordRec(b))return m===x.mode;
+  if(wIsVerbRec(b)){if(x.mode!=="verb")return false;var v=wVerbRow(b);return !!v&&v.t===x.vt;}
+  if(wIsPolyRec(b)){if(m!==x.mode)return false;var t=m.slice(5);
+    if(t==="exam")return b.xi==null||b.xi===x.xi;
+    if(t==="context")return b.ex?b.ex===x.ex:b.zh===x.zh;
+    return b.zh===x.zh;}
+  if(wIsPhRec(b))return x.mode===m&&(!b.zh||b.zh===x.zh)&&(typeof b.e2c!=="boolean"||b.e2c===x.e2c);
+  if(m==="考古題"||m==="片語題目")return x.mode===m;
+  return false;
+}
+function wHit(x){
+  var a=loadMAll(),hit=a.filter(function(b){return wSame(b,x);});
+  if(!hit.length)return;
+  var n=Math.max.apply(null,hit.map(function(b){return b.hits||0;}))+1,d=new Date().toISOString();
+  hit.forEach(function(b){b.hits=n;if(n>=W_NEED)b.done=d;});
+  saveMAll(a);cloudMirror();
+  wToast(n>=W_NEED?"🎉 "+x.en+" 答對 "+W_NEED+" 次，移出錯題本！":"👍 錯題 "+x.en+" 答對 "+n+"／"+W_NEED);
+}
+function wAns(ok,x){if(ok)wHit(x);else logMistake(x);}
+function wToast(s){var d=document.getElementById("wToast");
+  if(!d){d=document.createElement("div");d.id="wToast";
+    d.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(34,34,34,.92);color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;z-index:9999;max-width:90vw;text-align:center;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:opacity .3s;opacity:0";
+    document.body.appendChild(d);}
+  d.textContent=s;d.style.opacity="1";clearTimeout(d._t);d._t=setTimeout(function(){d.style.opacity="0";},2200);}
 function acctMsg(t,k){const m=$('#amsg');if(m){m.textContent=t;m.className='amsg'+(k?(' '+k):'')}}
 function acctHTML(){
   if(!CLOUD)return '';
@@ -3833,7 +3864,7 @@ window.acctLogout=function(){saveSession(null);renderWrong();};
 window.acctSync=async function(){await syncDown();renderWrong();};
 window.wExport=function(){var blob=new Blob([JSON.stringify(loadM(),null,1)],{type:'application/json'});var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download='英文錯題本.json';a.click();URL.revokeObjectURL(u);};
 window.wImport=function(){var i=document.createElement('input');i.type='file';i.accept='.json,application/json';i.onchange=function(){var f=i.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{saveM(mergeArr(loadM(),JSON.parse(rd.result)));cloudMirror();renderWrong();}catch(e){alert('匯入失敗:'+e.message)}};rd.readAsText(f);};i.click();};
-window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;saveM([]);if(CLOUD&&loggedIn())cloudSave([]).catch(function(){});renderWrong();};
+window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;var d=new Date().toISOString();saveMAll(loadMAll().map(function(r){if(!r.done)r.done=d;return r;}));cloudMirror();renderWrong();};
 /* 單字錯題依「當初答錯的題型」重測：拼字／聽英拼字要拼、看例句選字出例句、其餘選擇題照原型 */
 function wIsWordRec(r){return TYPES.indexOf(String(r.mode||""))>=0;}
 function wWordRetest(recs){
@@ -3864,19 +3895,23 @@ function wIsVerbRec(r){return r.mode==="verb";}
 function wIsPolyRec(r){return String(r.mode||"").indexOf("poly_")===0;}
 function wIsPhRec(r){return r.mode==="片語會話";}
 function wTab(name){const tb=document.querySelector('.tab[data-tab="'+name+'"]');if(tb)tb.click();window.scrollTo(0,0);}
+function wVerbRow(r){
+  const sets=r.vs&&VSETS[r.vs]?[r.vs]:["irr","all"];
+  let vs=null,row=null;
+  sets.some(function(k){row=VSETS[k].data.find(function(x){return x[1]===r.en;});if(row){vs=k;return true;}return false;});
+  if(!row)return null;
+  let t=r.vt||((row[4]||row[5])?"type3":"v2zh");
+  if((t==="past2base"||t==="past2spell")&&!row[4])t="v2zh";
+  if(t==="type3"&&!(row[4]||row[5]))t="v2zh";
+  return {vs:vs,row:row,t:t};
+}
 function wVerbQs(recs){
   const seen=new Set(),qs=[];
   recs.forEach(function(r){
     if(!wIsVerbRec(r))return;
-    const sets=r.vs&&VSETS[r.vs]?[r.vs]:["irr","all"];
-    let vs=null,row=null;
-    sets.some(function(k){row=VSETS[k].data.find(function(x){return x[1]===r.en;});if(row){vs=k;return true;}return false;});
-    if(!row)return;
-    let t=r.vt||((row[4]||row[5])?"type3":"v2zh");
-    if((t==="past2base"||t==="past2spell")&&!row[4])t="v2zh";
-    if(t==="type3"&&!(row[4]||row[5]))t="v2zh";
-    const k=row[1]+"|"+t; if(seen.has(k))return; seen.add(k);
-    const q=vBuild(row,t); q.vs=vs; qs.push(q);
+    const v=wVerbRow(r); if(!v)return;
+    const k=v.row[1]+"|"+v.t; if(seen.has(k))return; seen.add(k);
+    const q=vBuild(v.row,v.t); q.vs=v.vs; qs.push(q);
   });
   return qs;
 }
@@ -4000,7 +4035,7 @@ function renderWrong(){
     if(Object.keys(less).length>1)h+='<div class="row" id="wLesRow"></div>';
     var wts=wTypeSummary(recs), wvq=wVerbQs(recs), wpq=wPolyQs(recs), whq=wPhraseItems(recs);
     var wbtn=function(id,label,n,detail){return '<button class="btn primary sm" id="'+id+'">📝 '+label+'（'+n+' 題'+(detail?'・依原題型：'+detail:'')+'）</button>';};
-    h+='<div class="stat" style="margin-top:6px">重測時一律用當初答錯的題型出題</div><div class="row">'
+    h+='<div class="stat" style="margin-top:6px">重測時一律用當初答錯的題型出題；同一題型答對 '+W_NEED+' 次就自動移出錯題本（中途答錯會重新計算）</div><div class="row">'
       +(wts.total?wbtn("wWordBtn","單字錯題",wts.total,wts.text):'')
       +(wvq.length?wbtn("wVerbBtn","動詞三態",wvq.length,wTypeCount(wvq,{type3:"拼三態",zh2v:"看中選動詞",v2zh:"看動詞選中文",past2base:"過去式選原形",past2spell:"過去式拼原形"},function(q){return q.t;})):'')
       +(wpq.length?wbtn("wPolyBtn","一字多義",wpq.length,wTypeCount(wpq,{context:"看例句",word:"看字義",exam:"講義選擇題"},function(q){return q.t;})):'')
@@ -4012,7 +4047,7 @@ function renderWrong(){
   rounds.forEach(function(rd){
     var items=groups[rd];
     h+='<div style="margin-top:14px"><div class="stat">🕒 '+esc(new Date(rd).toLocaleString())+'（'+items.length+' 題）</div>';
-    h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(wCatOf(r.mode))+'</span></div></div></div></div>';}).join('');
+    h+=items.map(function(r){return '<div class="item" style="margin-top:6px"><div class="top"><span class="dot" style="background:var(--l5)"></span><div><div class="w">'+esc(r.en||'')+' <button class="sp" style="width:26px;height:26px;font-size:.8rem" onclick="speak(\''+String(r.en||'').replace(/'/g,"\\'")+'\')">🔊</button></div><div class="m">'+esc(r.correct||r.zh||'')+'　<span style="color:var(--muted);font-size:.78rem">'+esc(wCatOf(r.mode))+'</span>'+(r.hits?'　<span style="color:var(--ok);font-weight:800;font-size:.78rem">已答對 '+r.hits+'／'+W_NEED+'</span>':'')+'</div></div></div></div>';}).join('');
     h+='</div>';
   });
   h+='</div>';
