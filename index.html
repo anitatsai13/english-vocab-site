@@ -2071,7 +2071,9 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const sample=(arr,n)=>shuffle(arr).slice(0,n);
-function speak(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=((String(text).trim().match(/ +/g)||[]).length>=2?.6:.85);speechSynthesis.speak(u);}catch(e){}}
+// 斜線（may / might）不唸出來，改成短暫停頓
+const noSlash=s=>String(s).replace(/\s*[\/／]\s*/g,", ");
+function speak(text){text=noSlash(text);try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=((String(text).trim().match(/ +/g)||[]).length>=2?.6:.85);speechSynthesis.speak(u);}catch(e){}}
 window.speak=speak;
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
 /* ---------- 單字個別挑選（跨課、可持久化） ---------- */
@@ -2608,7 +2610,7 @@ function vRangeArr(){
   return d.filter(r=>r[0]>=a && r[0]<=b);
 }
 function vsp(w){return "speak('"+String(w).replace(/'/g,"\\'")+"')";}
-function speak3(){var a=[].slice.call(arguments).filter(Boolean);try{speechSynthesis.cancel();a.forEach(function(w){var u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u);});}catch(e){}}
+function speak3(){var a=[].slice.call(arguments).filter(Boolean);try{speechSynthesis.cancel();a.forEach(function(w){var u=new SpeechSynthesisUtterance(noSlash(w));u.lang="en-US";u.rate=.85;speechSynthesis.speak(u);});}catch(e){}}
 function vsp3(r){return "speak3("+[r[1],r[4],r[5]].filter(Boolean).map(function(w){return "'"+String(w).replace(/'/g,"\\'")+"'";}).join(",")+")";}
 function vsp3btn(r){return '<button class="sp" title="依序唸 原形→過去式→過去分詞" onclick="'+vsp3(r)+'">🔊³</button>';}
 function vBrowse(){
