@@ -4127,18 +4127,37 @@ function sPolyHtml(p){
   const body=p.senses.map(s=>'<div class="sqa">・('+sEsc(s.p)+') '+sEsc(s.zh)+'：'+sEsc(s.ex)+'　'+sEsc(s.t||"")+'</div>').join("");
   return '<details class="sq"><summary><b>'+sEsc(p.en)+'</b>　'+p.senses.map(s=>sEsc(s.zh)).join("／")+'<span class="tagb">一字多義</span></summary>'+body+'</details>';
 }
+// 動詞三態：VERB_ALL 為主，補上只在 VERB_IRR 的字；row＝[編號, 原形, 第三人稱, V-ing, 過去式, 過去分詞, 中文]
+const S_IRR=new Set(VERB_IRR.map(r=>r[1]));
+const S_VERBS=(()=>{const m=new Map();VERB_ALL.concat(VERB_IRR).forEach(r=>{if(!m.has(r[1]))m.set(r[1],r);});return [...m.values()];})();
+function sVerbHtml(r){
+  const body='<div class="sqa"><button class="sspk" data-say3="'+sEsc([r[1],r[4],r[5]].join("|"))+'">🔊 三態發音</button></div>'+
+    '<div class="sqa">原形 <b>'+sEsc(r[1])+'</b>　過去式 <b>'+sEsc(r[4])+'</b>　過去分詞 <b>'+sEsc(r[5])+'</b><br>第三人稱單數 '+sEsc(r[2])+'　現在分詞 '+sEsc(r[3])+'</div>';
+  return '<details class="sq"><summary><b>'+sEsc(r[1])+' – '+sEsc(r[4])+' – '+sEsc(r[5])+'</b>　'+sEsc(r[6])+'<span class="tagb">動詞三態'+(S_IRR.has(r[1])?'・不規則':'')+'</span></summary>'+body+'</details>';
+}
+function sPhraseHtml(p){
+  let body='<div class="sqa"><button class="sspk" data-say="'+sEsc(p.en)+'">🔊 發音</button></div>';
+  if(p.n)body+='<div class="sqa">💡 '+sEsc(p.n)+'</div>';
+  if(p.e)body+='<div class="sqa">'+String(p.e).split("｜").map(sEsc).join("<br>")+'</div>';
+  return '<details class="sq"><summary><b>'+sEsc(p.en)+'</b>　'+sEsc(p.zh)+'<span class="tagb">片語會話'+(p.s?'・'+sEsc(p.s):'')+'</span></summary>'+body+'</details>';
+}
 function runSearch(){
   const v=$("#sbox").value.trim().toLowerCase(), out=$("#sout");
   if(!v){out.hidden=true;out.innerHTML="";return;}
   const terms=v.split(/\s+/).filter(Boolean), hit=t=>terms.every(x=>t.includes(x));
-  const words=VOCAB.filter(w=>hit((w.en+" "+w.zh+" "+(w.tip||"")+" "+(w.def||"")+" "+(w.ex?w.ex.en+" "+(w.ex.zh||""):"")).toLowerCase())).slice(0,20);
-  const polys=POLY.filter(p=>hit((p.en+" "+p.senses.map(s=>s.zh+" "+s.ex+" "+(s.t||"")).join(" ")).toLowerCase())).slice(0,8);
-  let h="";
-  if(words.length)h+='<div class="snote">📋 單字／片語（點擊展開）</div>'+words.map(sWordHtml).join("");
-  if(polys.length)h+='<div class="snote">🔀 一字多義</div>'+polys.map(sPolyHtml).join("");
+  // 相關度：標題字（或任一動詞形態）完全相同 0、開頭相同 1、其他 2；同區內依此排序，各區也依最佳結果排序
+  const rank=heads=>{heads=heads.map(x=>String(x).toLowerCase().trim());return heads.some(x=>x===v)?0:heads.some(x=>x.startsWith(v))?1:2;};
+  const pick=(arr,text,heads,n)=>arr.map((x,i)=>({x,i,r:rank(heads(x))})).filter(o=>hit(text(o.x).toLowerCase())).sort((a,b)=>a.r-b.r||a.i-b.i).slice(0,n);
+  const sec=[
+    {t:'📋 單字／片語（點擊展開）',f:sWordHtml,a:pick(VOCAB,w=>w.en+" "+w.zh+" "+(w.tip||"")+" "+(w.def||"")+" "+(w.ex?w.ex.en+" "+(w.ex.zh||""):""),w=>[w.en].concat(w.en.split(/\s*[\/／]\s*/)),20)},
+    {t:'🔤 動詞三態',f:sVerbHtml,a:pick(S_VERBS,r=>r.slice(1).join(" "),r=>r.slice(1,6).concat(String(r[4]).split(/\s*[\/／]\s*/),String(r[5]).split(/\s*[\/／]\s*/)),10)},
+    {t:'💬 片語會話',f:sPhraseHtml,a:pick(PHRASE,p=>p.en+" "+p.zh+" "+(p.n||"")+" "+(p.e||""),p=>[p.en],12)},
+    {t:'🔀 一字多義',f:sPolyHtml,a:pick(POLY,p=>p.en+" "+p.senses.map(s=>s.zh+" "+s.ex+" "+(s.t||"")).join(" "),p=>[p.en],8)}
+  ].filter(s=>s.a.length).map((s,k)=>({...s,k,best:Math.min(...s.a.map(o=>o.r))})).sort((a,b)=>a.best-b.best||a.k-b.k);
+  let h=sec.map(s=>'<div class="snote">'+s.t+'</div>'+s.a.map(o=>s.f(o.x)).join("")).join("");
   if(!h)h='<div class="snote">找不到「'+sEsc(v)+'」相關內容</div>';
   out.innerHTML=h;out.hidden=false;
-  out.querySelectorAll(".sspk").forEach(b=>b.onclick=()=>speak(b.dataset.say));
+  out.querySelectorAll(".sspk").forEach(b=>b.onclick=()=>{if(b.dataset.say3)speak3.apply(null,b.dataset.say3.split("|"));else speak(b.dataset.say);});
 }
 let sTimer=null;
 $("#sbox").addEventListener("input",()=>{clearTimeout(sTimer);sTimer=setTimeout(runSearch,200);});
