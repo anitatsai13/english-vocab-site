@@ -2336,7 +2336,7 @@ $("#startquiz").onclick=()=>{
   let qpool=(qType==="cloze")?scope.filter(v=>(v.clz&&v.clz.length&&!EASON_GROUPS.has(v.group))||clozeBlank(v)):scope;
   if(!qpool.length){alert("目前沒有可測的單字(此範圍／釘選／已選為空)");return;}
   let n=$("#qnum").value;n=(n==="all")?qpool.length:Math.min(+n,qpool.length);
-  const picked=sample(qpool,n);
+  const picked=prioSort(qpool,(C,v)=>prioStat(C,'q',v.group,v.lesson,v.en)).slice(0,n);
   // 誘答取材放大到整冊（釘選則全部單字），單課測驗也能挑到夠多的相似易混淆字
   const dpool = (qPin||qSelW) ? VOCAB : VOCAB.filter(v=>v.group===activeGroup);
   questions=picked.map(w=>{const t=(qType==="mix")?TYPES[Math.floor(Math.random()*TYPES.length)]:qType;return makeQuestion(w,dpool,t);});
@@ -2495,7 +2495,8 @@ function xqPool(kind){
 function xqStart(kind,only){
   const u=xqUI(kind), pool=only||xqPool(kind);
   if(!pool.length){alert("此範圍沒有可測的題目。");return;}
-  let list=shuffle(pool.slice());
+  let list=only||kind==="wrong"?shuffle(pool.slice())
+    :prioSort(pool,(C,x)=>kind==="exam"?prioStat(C,'e',activeGroup,x.label,x.say):prioStat(C,'q','phrase','課本選擇題',pgPexKey(x.q)));
   if(kind==="pexam"&&!only){const s=$("#pexNum");if(s&&s.value!=="all")list=list.slice(0,+s.value);}
   XQ={kind:kind,list:list,i:0,score:0,wrong:[],scope:xqScope(kind)};
   if(!only)newRound();
@@ -2652,7 +2653,7 @@ function vStart(){
   else if(vtype==="past2base"||vtype==="past2spell") arr=arr.filter(function(r){return r[4];});
   if(!arr.length){$("#vout").innerHTML='<p class="stat">此範圍沒有可測的動詞,請調整號碼或題型。</p>';return;}
   newRound(); VRETEST=null;
-  vq=shuffle(arr).map(function(r){return vBuild(r,vPickType(r));});
+  vq=prioSort(arr,function(C,r){return prioStat(C,'q','verb_'+vset,pgVerbUnit(vset,r[0]),r[1]);}).map(function(r){return vBuild(r,vPickType(r));});
   vi=0; vscore=0; vwrong=[]; vRender();
 }
 function vHead(){
@@ -2862,7 +2863,7 @@ function pStart(){
       ans:c.opts[c.ans],opts:c.opts.slice(),q:String(c.q).replace(/<br\s*\/?>/gi,"　")}));
   });
   if(!items.length){$("#pout").innerHTML='<div class="empty">此範圍沒有可測的題目</div>';return;}
-  newRound();PRETEST=null;pq=shuffle(items);pqi=0;pscore=0;pwrong=[];pRender();
+  newRound();PRETEST=null;pq=prioSort(items,(C,q)=>prioStat(C,'q','poly',pgPolyUnit(q.p.en),q.p.en));pqi=0;pscore=0;pwrong=[];pRender();
 }
 function pHead(){return '<div class="progress"><i style="width:'+(pqi/pq.length*100)+'%"></i></div><div class="counter" style="text-align:center;margin-bottom:8px">第 '+(pqi+1)+' / '+pq.length+' 題　|　得分 '+pscore+'</div>';}
 function pRender(){
@@ -3921,8 +3922,9 @@ function phStart(only){
     /* 片語題目（課本選擇題）一併混入練習 */
     const exQ=PEXAM.map(e=>({p:{s:e.src||"片語題目",c:"選擇題",en:e.opts[e.ans],zh:"",n:e.exp||"",e:null},
       q:String(e.q).replace(/<br\s*\/?>/gi,"　"),opts:e.opts.slice(),ans:e.ans,exam:true}));
-    list=shuffle(list.concat(exQ));
+    list=list.concat(exQ);
   }
+  if(!only)list=prioSort(list,(C,x)=>x.exam?prioStat(C,'q','phrase','課本選擇題',pgPexKey(x.q)):prioStat(C,'q','phrase',x.p.c,x.p.en));
   if(!only){const sel=$("#phNum");const n=sel?sel.value:"all";if(n!=="all")list=list.slice(0,+n);}
   PHQ={list:list,i:0,score:0,wrong:[]};
   $("#phlist").style.display="none";$("#phQuizBtn").style.display="none";$("#phToggle").style.display="none";
@@ -4422,6 +4424,20 @@ function progMisIndex(P){
       const it=items.find(x=>x.en===o.en);
       if(it&&it.zh&&(!o.zh||o.zh==='考古題'||o.zh==='片語題目'||/^L\d/.test(o.zh)))o.zh=it.zh;});});
   return {idx,stat};
+}
+/* ---- 選題優先順序（比照文法網）：① 沒做過 → ② 答錯次數多的先 → ③ 答對次數多的最後；次數相同的隨機 ----
+   用於：單字測驗（依題數取前段）、考古題、片語題目、動詞三態、一字多義、片語會話；錯題重測不套用。
+   次數取自學習進度；錯題本的筆數比進度記的錯誤次數多時（進度功能上線前答錯的），以錯題本為準。 */
+function prioCtx(){const P=progLoad();return {P:P,M:progMisIndex(P).idx};}
+function prioStat(C,kind,g,l,en){
+  const u=C.P[g+'|'+l],r=u&&u[kind]&&u[kind][en],m=(C.M[g+'|'+l]||{})[en];
+  const ok=r?r[1]||0:0,bad=Math.max(r?(r[0]||0)-ok:0,m?m.n:0),n=ok+bad;
+  return {n:n,ok:ok,bad:bad,tier:!n?0:bad?1:2};
+}
+function prioSort(arr,fn){
+  const C=prioCtx();
+  return arr.map(x=>({x:x,s:fn(C,x),r:Math.random()}))
+    .sort((a,b)=>(a.s.tier-b.s.tier)||(b.s.bad-a.s.bad)||(a.s.ok-b.s.ok)||(a.r-b.r)).map(o=>o.x);
 }
 function progMistakes(group,lesson,P){
   const m=((_misIdx||progMisIndex(P)).idx[group+'|'+lesson])||{};
