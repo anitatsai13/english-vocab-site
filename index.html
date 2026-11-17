@@ -2434,7 +2434,7 @@ function submitSpell(){
 function fb(ok,q){
   speak(q.word.en);
   progLog("q",q.word.group||activeGroup,q.word.lesson,q.word.en,ok);
-  wAns(ok,{mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh});
+  wAns(ok,{mode:q.type,en:q.word.en,zh:q.word.zh,pos:q.word.pos,group:q.word.group||activeGroup,correct:q.word.en+" = "+q.word.zh,anyType:!!(WRETEST&&wType!=="orig")});
   const f=$("#qfeedback");f.className="feedback "+(ok?"ok":"bad");
   f.textContent=ok?"✅ 答對了！ "+q.word.en+" = "+q.word.zh : "❌ 正確答案： "+q.word.en+" = "+q.word.zh;
   if(q.word.ex){
@@ -4074,13 +4074,13 @@ async function grFlush(){if(!CLOUD||!loggedIn())return;const out=grLoad();if(!ou
     localStorage.setItem(GRKEY,'[]');
   }catch(e){console.warn('grFlush',e)}}
 function newRound(){quizRound=new Date().toISOString();}
-function logMistake(rec){rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadMAll();a.forEach(function(b){if(b.hits&&wSame(b,rec))b.hits=0;});a.push(rec);saveMAll(a);cloudMirror();}
+function logMistake(rec){delete rec.anyType;rec.t=new Date().toISOString();rec.round=quizRound||rec.t;var a=loadMAll();a.forEach(function(b){if(b.hits&&wSame(b,rec))b.hits=0;});a.push(rec);saveMAll(a);cloudMirror();}
 /* 錯題答對計數：同一題、同一題型答對 W_NEED 次就移出錯題本；中途答錯會歸零重算 */
 const W_NEED=3;
 function wSame(b,x){ /* b＝錯題本裡的記錄，x＝剛作答的題 */
   if(b.done||!x||b.en!==x.en)return false;
   var m=String(b.mode||"");
-  if(wIsWordRec(b))return m===x.mode;
+  if(wIsWordRec(b))return m===x.mode||(!!x.anyType&&wIsWordRec(x));
   if(wIsVerbRec(b)){if(x.mode!=="verb")return false;var v=wVerbRow(b);return !!v&&v.t===x.vt;}
   if(wIsPolyRec(b)){if(m!==x.mode)return false;var t=m.slice(5);
     if(t==="exam")return b.xi==null||b.xi===x.xi;
@@ -4119,14 +4119,18 @@ window.wImport=function(){var i=document.createElement('input');i.type='file';i.
 window.wClear=function(){if(!confirm('確定清空所有錯題?'))return;var d=new Date().toISOString();saveMAll(loadMAll().map(function(r){if(!r.done)r.done=d;return r;}));cloudMirror();renderWrong();};
 /* 單字錯題依「當初答錯的題型」重測：拼字／聽英拼字要拼、看例句選字出例句、其餘選擇題照原型 */
 function wIsWordRec(r){return TYPES.indexOf(String(r.mode||""))>=0;}
+/* 錯題本單字重測的題型：orig＝依當初答錯的題型（預設）；mix＝每題隨機；其餘＝指定題型（同一個字只出一次） */
+var wType="orig";
+const W_TYPES=[["orig","依原題型"],["mix","混合"],["en2zh","看英選中"],["zh2en","看中選英"],["listen","聽音選字"],["cloze","看例句選字"],["spell","看中拼字"],["listenspell","聽英拼字"]];
 function wWordRetest(recs){
   const seen=new Set(),qs=[];
   recs.forEach(function(r){
     if(!wIsWordRec(r))return;
     const w=VOCAB.find(function(x){return x.en===r.en&&x.group===(r.group||"kang");})||VOCAB.find(function(x){return x.en===r.en;});
     if(!w)return;
-    const k=w.group+"|"+w.en+"|"+r.mode; if(seen.has(k))return; seen.add(k);
-    qs.push(makeQuestion(w,VOCAB.filter(function(x){return x.group===w.group;}),r.mode));
+    const t=wType==="orig"?r.mode:wType==="mix"?TYPES[Math.floor(Math.random()*TYPES.length)]:wType;
+    const k=w.group+"|"+w.en+"|"+(wType==="orig"?r.mode:""); if(seen.has(k))return; seen.add(k);
+    qs.push(makeQuestion(w,VOCAB.filter(function(x){return x.group===w.group;}),t));
   });
   if(!qs.length){alert("這個範圍沒有可重測的單字錯題。");return;}
   WRETEST=recs.slice();
@@ -4139,7 +4143,8 @@ function wWordRetest(recs){
 function wTypeSummary(recs){
   const n={},lab={spell:"看中拼字",listenspell:"聽英拼字",cloze:"看例句",en2zh:"英→中",zh2en:"中→英",listen:"聽音選字"},seen=new Set();
   recs.forEach(function(r){if(!wIsWordRec(r))return;const k=r.group+"|"+r.en+"|"+r.mode;if(seen.has(k))return;seen.add(k);n[r.mode]=(n[r.mode]||0)+1;});
-  return {total:seen.size,text:Object.keys(lab).filter(function(k){return n[k];}).map(function(k){return lab[k]+" "+n[k];}).join("、")};
+  const words=new Set(Array.from(seen).map(function(k){return k.split("|").slice(0,2).join("|");})).size;
+  return {total:seen.size,words:words,text:Object.keys(lab).filter(function(k){return n[k];}).map(function(k){return lab[k]+" "+n[k];}).join("、")};
 }
 /* 動詞三態／一字多義／片語會話錯題：回到各自的分頁，用當初答錯的題型重測。
    舊記錄沒存題型時：動詞＝看原形拼三態（預設題型），片語＝英→中、中→英兩個方向都測。 */
@@ -4285,10 +4290,11 @@ function renderWrong(){
     h+='<div class="row" style="margin-top:8px" id="wCatRow"></div>';
     if(Object.keys(grps).length>1)h+='<div class="row" id="wGrpRow"></div>';
     if(Object.keys(less).length>1)h+='<div class="row" id="wLesRow"></div>';
+    if(a.some(wIsWordRec))h+='<div class="stat" style="margin-top:10px;text-align:left;font-weight:800">單字錯題的題型</div><div class="row" id="wTypeRow"></div>';
     var wts=wTypeSummary(recs), wvq=wVerbQs(recs), wpq=wPolyQs(recs), whq=wPhraseItems(recs);
     var wbtn=function(id,label,n,detail){return '<button class="btn primary sm" id="'+id+'">📝 '+label+'（'+n+' 題'+(detail?'・依原題型：'+detail:'')+'）</button>';};
-    h+='<div class="stat" style="margin-top:6px">重測時一律用當初答錯的題型出題；同一題型答對 '+W_NEED+' 次就自動移出錯題本（中途答錯會重新計算）</div><div class="row">'
-      +(wts.total?wbtn("wWordBtn","單字錯題",wts.total,wts.text):'')
+    h+='<div class="stat" style="margin-top:6px">'+(wType==="orig"?'重測時用當初答錯的題型出題；同一題型連續答對 '+W_NEED+' 次就自動移出錯題本':'單字錯題用「'+W_TYPES.find(function(x){return x[0]===wType;})[1]+'」重測，答對就算這個字，連續答對 '+W_NEED+' 次自動移出錯題本')+'（中途答錯會重新計算）</div><div class="row">'
+      +(wts.total?(wType==="orig"?wbtn("wWordBtn","單字錯題",wts.total,wts.text):'<button class="btn primary sm" id="wWordBtn">📝 單字錯題（'+wts.words+' 個字・題型：'+W_TYPES.find(function(x){return x[0]===wType;})[1]+'）</button>'):'')
       +(wvq.length?wbtn("wVerbBtn","動詞三態",wvq.length,wTypeCount(wvq,{type3:"拼三態",zh2v:"看中選動詞",v2zh:"看動詞選中文",past2base:"過去式選原形",past2spell:"過去式拼原形"},function(q){return q.t;})):'')
       +(wpq.length?wbtn("wPolyBtn","一字多義",wpq.length,wTypeCount(wpq,{context:"看例句",word:"看字義",exam:"講義選擇題"},function(q){return q.t;})):'')
       +(whq.length?wbtn("wPhBtn","片語會話",whq.length,wTypeCount(whq,{t:"英→中",f:"中→英"},function(q){return q.e2c?"t":"f";})):'')
@@ -4325,6 +4331,8 @@ function renderWrong(){
     Object.keys(less).sort(function(x,y){return x.localeCompare(y,undefined,{numeric:true});}).forEach(function(l){
       mkc(lrow,wSelL.has(l),l+"（"+less[l]+"）",function(){if(wSelL.has(l))wSelL.delete(l);else wSelL.add(l);});});
   }
+  var trow=$("#wTypeRow");
+  if(trow)W_TYPES.forEach(function(x){mkc(trow,wType===x[0],x[1],function(){wType=x[0];});});
   var wb=$("#wWordBtn");
   if(wb)wb.onclick=function(){wWordRetest(loadM().filter(wRecMatch));};
   [["#wVerbBtn",wVerbRetest],["#wPolyBtn",wPolyRetest],["#wPhBtn",wPhraseRetest]].forEach(function(x){var b=$(x[0]);if(b)b.onclick=function(){x[1](loadM().filter(wRecMatch));};});
