@@ -4431,13 +4431,17 @@ function progMisIndex(P){
 function prioCtx(){const P=progLoad();return {P:P,M:progMisIndex(P).idx};}
 function prioStat(C,kind,g,l,en){
   const u=C.P[g+'|'+l],r=u&&u[kind]&&u[kind][en],m=(C.M[g+'|'+l]||{})[en];
-  const ok=r?r[1]||0:0,bad=Math.max(r?(r[0]||0)-ok:0,m?m.n:0),n=ok+bad;
-  return {n:n,ok:ok,bad:bad,tier:!n?0:bad?1:2};
+  const ok=r?r[1]||0:0,bad=Math.max(r?(r[0]||0)-ok:0,m?m.n:0),n=ok+bad,last=r?r[2]||'':'';
+  /* 已訂正：還在錯題本的看 m.fixed（最後答錯之後有答對）；不在錯題本的看進度最後一次是否答對（r[3]≥r[2]）。
+     舊版只看錯過幾次，錯過一次就永遠排前面，題目都做過後每輪抽到同一批（2026-11-17 修正） */
+  const fixed=m?!!m.fixed:!!(r&&r[3]&&r[3]>=r[2]);
+  return {n:n,ok:ok,bad:bad,last:last,tier:!n?0:(bad&&!fixed)?1:2};
 }
 function prioSort(arr,fn){
+  /* 同一層內：錯越多越先 → 答對次數少的先 → 越久沒練習的先 → 隨機 */
   const C=prioCtx();
   return arr.map(x=>({x:x,s:fn(C,x),r:Math.random()}))
-    .sort((a,b)=>(a.s.tier-b.s.tier)||(b.s.bad-a.s.bad)||(a.s.ok-b.s.ok)||(a.r-b.r)).map(o=>o.x);
+    .sort((a,b)=>(a.s.tier-b.s.tier)||(a.s.tier===1?(b.s.bad-a.s.bad):0)||(a.s.ok-b.s.ok)||(a.s.last<b.s.last?-1:a.s.last>b.s.last?1:0)||(a.r-b.r)).map(o=>o.x);
 }
 function progMistakes(group,lesson,P){
   const m=((_misIdx||progMisIndex(P)).idx[group+'|'+lesson])||{};
