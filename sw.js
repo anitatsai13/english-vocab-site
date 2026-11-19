@@ -1,6 +1,6 @@
 // 改版策略：index.html／導覽請求走 network-first（有網路就拿新版，離線才回快取），
 // 其餘靜態檔維持 cache-first。改版後使用者重新整理即可拿到新版，不必手動清快取。
-const CACHE = "english-v4";
+const CACHE = "english-v5";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 // 判斷是不是「主文件」請求：網址列導覽、或直接指到 / 與 /index.html
